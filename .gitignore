@@ -1,0 +1,16 @@
+out/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.png
+!docs/*.png
+
+# Local AWS/Terraform configuration and generated state.
+infra/config.yaml
+infra/terraform.tfvars.json
+infra/**/.terraform/
+infra/**/*.tfstate
+infra/**/*.tfstate.*
+infra/**/*.tfplan
+infra/**/crash.log

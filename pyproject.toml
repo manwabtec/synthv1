@@ -1,0 +1,19 @@
+[project]
+name = "synthrig"
+version = "0.1.0"
+description = "Synthetic multi-camera + dot-laser rig renderer (Blender Cycles) with exact GT"
+requires-python = ">=3.11,<3.12"
+dependencies = ["numpy", "opencv-python", "pydantic>=2", "pyyaml", "scipy", "OpenEXR>=3.3", "boto3"]
+
+[project.optional-dependencies]
+render = ["bpy==4.2.0"]   # Blender as a Python module (needs Python 3.11); or run inside Blender
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["synthrig*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

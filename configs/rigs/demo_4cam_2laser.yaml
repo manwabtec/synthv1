@@ -1,0 +1,62 @@
+# Demo rig: 4 cameras (cam0+cam1 = stereo pair), 2 dot-pattern lasers, 1 rig-mounted strobe.
+#
+# Frames: every pose is device -> RIG frame. All frames are OpenCV-style:
+#   x right, y down, z forward (optical / emission axis). Units: metres.
+# The rig frame origin is the stereo midpoint; the scene decides where the rig sits in the world.
+name: demo_4cam_2laser
+version: 1
+description: >
+  2.3 MP GigE-class sensors (1936x1216, 5.86 um). Mono stereo pair with 12 mm lenses,
+  120 mm baseline; two colour Bayer side cameras with 8 mm lenses toed in to the working point.
+
+cameras:
+  - name: cam0                      # stereo left
+    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, focal_length_mm: 12.0}
+    distortion: [-0.10, 0.05, 0.0, 0.0, 0.0]
+    pose: {position: [-0.06, 0.0, 0.0], euler_xyz_deg: [0, 0, 0]}
+    sensor: {mono: true, bit_depth: 12, full_well_e: 10000, read_noise_e: 3.0, exposure: 1.0,
+             bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}}
+
+  - name: cam1                      # stereo right
+    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, focal_length_mm: 12.0}
+    distortion: [-0.10, 0.05, 0.0, 0.0, 0.0]
+    pose: {position: [0.06, 0.0, 0.0], euler_xyz_deg: [0, 0, 0]}
+    sensor: {mono: true, bit_depth: 12, full_well_e: 10000, read_noise_e: 3.0, exposure: 1.0,
+             bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}}
+
+  - name: cam2                      # left side, colour
+    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, focal_length_mm: 8.0}
+    distortion: [-0.20, 0.08, 0.0, 0.0, 0.0]
+    pose: {position: [-0.35, 0.0, 0.0], look_at: [0.0, 0.0, 1.5]}
+    sensor: {mono: false, bayer: RGGB, rgb_response: [1.0, 1.0, 1.0], bit_depth: 12, exposure: 1.0}
+
+  - name: cam3                      # right side, colour
+    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, focal_length_mm: 8.0}
+    distortion: [-0.20, 0.08, 0.0, 0.0, 0.0]
+    pose: {position: [0.35, 0.0, 0.0], look_at: [0.0, 0.0, 1.5]}
+    sensor: {mono: false, bayer: RGGB, rgb_response: [1.0, 1.0, 1.0], bit_depth: 12, exposure: 1.0}
+
+stereo_pairs:
+  - {name: front, left: cam0, right: cam1, alpha: 0.0}
+
+lasers:
+  - name: red
+    wavelength_nm: 650
+    pose: {position: [0.0, -0.05, 0.0], euler_xyz_deg: [0, 0, 0]}
+    pattern: {type: grid, rows: 21, cols: 21, pitch_deg: [1.5, 1.5]}
+    power_w: 250
+    dot_sigma_mrad: 0.6
+
+  - name: green
+    wavelength_nm: 520
+    pose: {position: [0.0, 0.05, 0.0], euler_xyz_deg: [0, 0, 0]}
+    pattern: {type: random, count: 600, fov_deg: [40, 30], min_separation_deg: 0.6, seed: 11}
+    power_w: 250
+    dot_sigma_mrad: 0.6
+
+lights:
+  - name: strobe
+    type: area
+    pose: {position: [0.0, -0.15, 0.0], look_at: [0.0, 0.0, 1.5]}
+    power_w: 15
+    size_m: 0.15

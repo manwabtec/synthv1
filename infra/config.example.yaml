@@ -1,0 +1,33 @@
+# Copy to infra/config.yaml. That file is gitignored and is the only repository
+# file that may contain account-specific values. Never put credentials here.
+project: synthrig
+owner: "<budget-alert-email-or-team>"
+cost_center: "<required-tag-or-na>"
+aws_profile: "<aws-cli-sso-profile>"
+region: us-east-1
+
+# Leave null/empty to let Terraform create private networking. If your
+# organisation supplies a VPC, provide private subnets with S3/ECR/SSM/Logs
+# endpoints or NAT access.
+vpc_id: null
+subnet_ids: []
+
+bucket: "<globally-unique-s3-bucket-name>"
+ecr_repo: synthrig
+dev_instance_type: g6.xlarge
+batch_instance_types:
+  - g6.xlarge
+  - g6.2xlarge
+  - g5.xlarge
+  - g5.2xlarge
+batch_max_vcpus: 64
+use_spot: true
+dev_idle_stop_minutes: 60
+monthly_budget_usd: 100
+
+# Organisation controls. Keep null/empty only when the AWS administrator
+# confirms they are not required.
+permission_boundary_arn: null
+kms_key_arn: null
+approved_gpu_ami_owners: [amazon]
+extra_tags: {}

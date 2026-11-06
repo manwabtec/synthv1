@@ -14,8 +14,8 @@ from typing import Any
 import bpy
 import numpy as np
 
-from ..rig import RigModel
-from ..rig.transforms import rig_pose_look_at
+from ..opticsrig import RigModel
+from ..opticsrig.transforms import rig_pose_look_at
 from .blender_backend import LG_SCENE_LIGHTS, BlenderBackend
 
 

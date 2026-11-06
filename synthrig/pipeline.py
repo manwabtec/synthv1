@@ -14,8 +14,9 @@ import yaml
 from pydantic import BaseModel, ConfigDict
 
 from .dataset import FORMAT_VERSION, write_exr, write_png
-from .rig import RigModel, load_rig
-from .rig.calib import perturb_camera, stereo_calib, write_camera_yaml, write_stereo_yaml
+from .paths import output_path
+from .opticsrig import RigModel, load_rig
+from .opticsrig.calib import perturb_camera, stereo_calib, write_camera_yaml, write_stereo_yaml
 from .sensor import apply_sensor
 from .stereo import gt_disparity, rectify_maps, rectify_pair, rectify_points
 
@@ -54,7 +55,7 @@ class RunConfig(_Strict):
     rig: str
     scene: str  # "module.path:ClassName"
     scene_params: dict[str, Any] = {}
-    output: str
+    output: str = "datasets/default"
     frames: int = 1
     start: int = 0
     seed: int = 0
@@ -66,7 +67,7 @@ class RunConfig(_Strict):
     def load(cls, path) -> "RunConfig":
         path = Path(path)
         cfg = cls.model_validate(yaml.safe_load(path.read_text()))
-        if not Path(cfg.rig).is_absolute() and not Path(cfg.rig).exists():
+        if not Path(cfg.rig).is_absolute():
             cfg.rig = str((path.parent / cfg.rig).resolve())
         return cfg
 
@@ -96,7 +97,7 @@ class Pipeline:
                                                      max_bounces=r.max_bounces, device=r.device,
                                                      threads=r.threads))
         self.scene = load_scene(cfg.scene, cfg.scene_params)
-        self.out = Path(cfg.output)
+        self.out = output_path(cfg.output)
         t = time.time()
         self.plans = {n: c.render_plan() for n, c in self.rig.cameras.items()}
         self.rect_maps = {n: rectify_maps(s, self.rig.cameras[s.left], self.rig.cameras[s.right])
@@ -149,14 +150,9 @@ class Pipeline:
         t0 = time.time()
         cfg, rig, be = self.cfg, self.rig, self.backend
         from .render.blender_backend import laser_group
-        from .render.scene_api import SceneContext
+        from .render.assembly import build_frame
 
-        rng = np.random.default_rng([cfg.seed, idx])
-        params = self.scene.params(rng)
-        be.new_frame(rig, cycles_seed=cfg.seed * 100003 + idx)
-        ctx = SceneContext(be, rig, rng)
-        self.scene.build(ctx, params)
-        be.set_rig_pose(ctx.T_world_rig)
+        params, ctx = build_frame(be, rig, self.scene, cfg.seed, idx)
 
         fdir = self.out / "frames" / f"{idx:06d}"
         if fdir.exists():

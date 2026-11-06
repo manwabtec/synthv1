@@ -6,8 +6,8 @@ import pytest
 bpy = pytest.importorskip("bpy")
 
 from synthrig.render.blender_backend import BlenderBackend, RenderSettings  # noqa: E402
-from synthrig.rig import RigModel  # noqa: E402
-from synthrig.rig.schema import Rig  # noqa: E402
+from synthrig.opticsrig import RigModel  # noqa: E402
+from synthrig.opticsrig.schema import Rig  # noqa: E402
 
 RIG = {
     "name": "t", "cameras": [{

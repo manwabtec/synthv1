@@ -36,10 +36,18 @@ uv run python infra/cloud.py config
 
 ## Lifecycle
 
-The laptop is only the control plane for AWS, lightweight tests, and downloaded
-dataset evaluation. Blender rendering is intended to run inside the Docker image
-on the EC2 GPU dev instance or AWS Batch, not on the laptop. The EC2 and Batch
-render commands are not available until their Phase 0 steps are implemented.
+A lightweight laptop can run configuration tools, tests and downloaded-dataset
+evaluation. A separate NVIDIA workstation can also render locally; run
+`uv sync --extra render`, then `uv run python infra/cloud.py local-check --gpu --render`.
+The EC2 and Batch render commands remain unavailable until their Phase 0 steps
+are implemented. Local verification does not complete the AWS acceptance checks.
+
+`access/check.py` checks AWS identity, EC2 read access and SSM connectivity:
+`uv run python -m infra.access.check <instance-id>`. `diagnostics/` checks local
+execution only and never requires AWS credentials. `storage/s3.py` implements
+snapshot push/pull, exposed through `cloud.py`; see the root README for commands,
+checksum semantics and immutable-prefix requirements. AWS data persists in S3;
+workers will use local scratch, not the workstation data root, while rendering.
 
 The Terraform design has two states:
 

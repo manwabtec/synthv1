@@ -48,7 +48,7 @@ Part-level labels require the wheel to be built as separate objects (or material
    - The dataset change is additive only.
 4. **Mount loader.** Add `synthrig/assets/mounts.py` (no bpy) that loads `configs/mounts/*.yaml` and returns `T_world_rig` with seeded jitter.
 5. **Tests.**
-   - (a) Import-layering test: importing `synthrig.rig`, `synthrig.sensor`, `synthrig.dataset`, `synthrig.stereo` and the `eval/` modules must not load `bpy`. Check `sys.modules` in a subprocess.
+   - (a) Import-layering test: importing `synthrig.opticsrig`, `synthrig.sensor`, `synthrig.dataset`, `synthrig.stereo` and the `eval/` modules must not load `bpy`. Check `sys.modules` in a subprocess.
    - (b) Every registered scene's params round-trip to JSON.
    - (c) Same `(seed, idx)` gives identical params.
 

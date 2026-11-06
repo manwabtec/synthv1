@@ -31,7 +31,7 @@ import cv2
 import numpy as np
 import OpenEXR
 
-from ..rig.calib import read_camera_yaml, read_stereo_yaml
+from ..opticsrig.calib import read_camera_yaml, read_stereo_yaml
 
 FORMAT_VERSION = 1
 

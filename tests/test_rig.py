@@ -2,12 +2,12 @@
 import numpy as np
 import pytest
 
-from synthrig.rig import RigModel, load_rig
-from synthrig.rig.schema import Rig
-from synthrig.rig.transforms import CV_TO_BLENDER_OBJ, look_at_R, pose_to_T
+from synthrig.opticsrig import RigModel, load_rig
+from synthrig.opticsrig.schema import Rig
+from synthrig.opticsrig.transforms import CV_TO_BLENDER_OBJ, look_at_R, pose_to_T
 from synthrig.sensor import apply_sensor
 
-RIG = "configs/rigs/demo_4cam_2laser.yaml"
+RIG = "configs/opticsrigs/demo_4cam_2laser.yaml"
 
 
 def test_rig_loads_and_hash_stable():

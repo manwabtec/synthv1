@@ -1,8 +1,8 @@
 # Application 2 run: rig + scene + frame count -> dataset
-rig: ../rigs/demo_4cam_2laser.yaml       # relative to this file
+rig: ../opticsrigs/demo_4cam_2laser.yaml       # relative to this file
 scene: scenes.app2:WheelScene
 scene_params: {}                          # fixed overrides of sampled params, e.g. {ambient: 0.1}
-output: out/app2_demo
+output: datasets/app2_demo
 frames: 4
 seed: 1234
 render:

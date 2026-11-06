@@ -4,8 +4,8 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from .rig.calib import StereoCalib
-from .rig.camera import CameraModel, RenderPlan
+from .opticsrig.calib import StereoCalib
+from .opticsrig.camera import CameraModel, RenderPlan
 
 
 def rectify_maps(s: StereoCalib, L: CameraModel, R: CameraModel):

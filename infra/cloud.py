@@ -11,9 +11,11 @@ from pathlib import Path
 from typing import Any, Sequence
 
 import yaml
+from botocore.exceptions import BotoCoreError, ClientError
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 INFRA = ROOT / "infra"
 CONFIG_PATH = INFRA / "config.yaml"
 TFVARS_PATH = INFRA / "terraform.tfvars.json"
@@ -149,12 +151,75 @@ def config_check(_args: argparse.Namespace) -> None:
     )
 
 
+def frame_range(value: str) -> tuple[int, int]:
+    try:
+        start, stop = (int(part) for part in value.split(":"))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Expected START:STOP, with STOP exclusive") from exc
+    if start < 0 or stop <= start:
+        raise argparse.ArgumentTypeError("Frame range must satisfy 0 <= START < STOP")
+    return start, stop
+
+
+def storage_client(uri: str):
+    import boto3
+    from infra.storage.s3 import parse_uri
+
+    bucket, _prefix = parse_uri(uri)
+    config = load_config()
+    if bucket != config["bucket"]:
+        raise CloudError("S3 URI bucket must match infra/config.yaml")
+    return boto3.Session(
+        profile_name=config.get("aws_profile") or None, region_name=config["region"]
+    ).client("s3")
+
+
+def dataset_push(args: argparse.Namespace) -> None:
+    from infra.storage.s3 import push
+    from synthrig.paths import output_path
+
+    count = push(storage_client(args.to), output_path(args.source, args.data_root), args.to)
+    print(f"Uploaded {count} new files to {args.to}; matching files were skipped.")
+
+
+def dataset_pull(args: argparse.Namespace) -> None:
+    from infra.storage.s3 import parse_uri, pull
+    from synthrig.paths import output_path
+
+    _bucket, prefix = parse_uri(args.uri)
+    destination = output_path(args.out or f"datasets/{prefix.split('/')[-1]}", args.data_root)
+    count = pull(storage_client(args.uri), args.uri, destination, args.frames)
+    print(f"Downloaded {count} new files to {destination}; matching files were skipped.")
+
+
+def local_check(args: argparse.Namespace) -> None:
+    from infra.diagnostics.local import check
+
+    check(gpu=args.gpu, render=args.render)
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     commands = result.add_subparsers(dest="command", required=True)
 
     config_cmd = commands.add_parser("config", help="validate local AWS configuration")
     config_cmd.set_defaults(func=config_check)
+
+    push_cmd = commands.add_parser("push", help="upload a local dataset to a new S3 run prefix")
+    push_cmd.add_argument("source", help="absolute path or path relative to the data root")
+    push_cmd.add_argument("--to", required=True, help="s3://bucket/datasets/run")
+    push_cmd.add_argument("--data-root")
+    push_cmd.set_defaults(func=dataset_push)
+    pull_cmd = commands.add_parser("pull", help="download a verified S3 dataset snapshot")
+    pull_cmd.add_argument("uri", help="s3://bucket/datasets/run")
+    pull_cmd.add_argument("--out", help="absolute path or path relative to the data root")
+    pull_cmd.add_argument("--frames", type=frame_range, help="START:STOP (STOP exclusive)")
+    pull_cmd.add_argument("--data-root")
+    pull_cmd.set_defaults(func=dataset_pull)
+    local = commands.add_parser("local-check", help="check this PC without accessing AWS")
+    local.add_argument("--gpu", action="store_true", help="require NVIDIA and a Cycles GPU")
+    local.add_argument("--render", action="store_true", help="also render one low-resolution frame")
+    local.set_defaults(func=local_check)
 
     services = commands.add_parser("services", help="manage all AWS resources")
     service_commands = services.add_subparsers(dest="services_command", required=True)
@@ -173,7 +238,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
         args.func(args)
-    except (CloudError, subprocess.CalledProcessError) as exc:
+    except (RuntimeError, ValueError, OSError, subprocess.CalledProcessError, BotoCoreError, ClientError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
     return 0

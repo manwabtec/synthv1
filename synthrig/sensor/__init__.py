@@ -16,7 +16,7 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
-from ..rig.schema import Sensor
+from ..opticsrig.schema import Sensor
 
 _BAYER_CODES = {"RGGB": cv2.COLOR_BayerRG2BGR, "BGGR": cv2.COLOR_BayerBG2BGR,
                 "GRBG": cv2.COLOR_BayerGR2BGR, "GBRG": cv2.COLOR_BayerGB2BGR}

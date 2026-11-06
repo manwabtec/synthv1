@@ -1,0 +1,62 @@
+ONGOING WORK: EC2 access from laptop / VS Code Remote-SSH
+Last updated: 2026-11-05
+
+GOAL
+Run code and debugging directly on the EC2 instance from VS Code (Remote-SSH).
+
+TARGET
+- Instance: i-0850e2a48e8724f0a, us-east-1, private IP 10.90.33.26
+- OS: Amazon Linux (login user: ec2-user), no EC2 key pair attached
+- AWS account 618257783690, role bu-kinetix-poweruser, profile "default"
+- Instance profile: kinetix-instance-profile
+
+DONE
+- AWS auth works via `okta-aws-cli web` (writes profile "default"; token is short-lived,
+  rerun when expired). Wrapper: aws_connection_check/okta_login.sh
+- aws_connection_check/check_access.py: identity + EC2 describe checks pass.
+- SSM Session Manager works (instance PingStatus Online, session-manager-plugin installed).
+  Wrapper: aws_connection_check/ssh_ec2.sh (interactive shell; --test is unreliable
+  because piped input is echoed/garbled by the session shell).
+- Local SSH key created: ~/.ssh/ec2_synthrig (+ .pub), ed25519, no passphrase.
+- ~/.ssh/config has Host "synthrig-ec2": ec2-user, IdentityFile ec2_synthrig,
+  ProxyCommand = aws ssm start-session --document-name AWS-StartSSHSession.
+- VS Code extension ms-vscode-remote.remote-ssh is installed.
+
+BLOCKED BY ORG POLICY (do not work around)
+- ec2-instance-connect:SendSSHPublicKey  - denied (no identity policy allows)
+- ssm:SendCommand                        - denied
+- ssm:StartSession on AWS-StartNonInteractiveCommand - explicit deny
+- ssm:StartSession on AWS-StartSSHSession            - explicit deny (confirmed 2026-11-05)
+  => VS Code Remote-SSH over SSM is blocked. Needs IT/cloud team approval.
+Only interactive `aws ssm start-session` (default document) is confirmed allowed.
+
+OKTA LOGIN (non-interactive, no IdP menu):
+  okta-aws-cli web -i arn:aws:iam::618257783690:saml-provider/wabtec-okta \
+                   -r arn:aws:iam::618257783690:role/bu-kinetix-poweruser
+  (account 618257783690 = IdP "w-chap-dev")
+
+TODO
+1. Install the public key on the instance (one time), from inside an interactive
+   Session Manager shell (run ./aws_connection_check/ssh_ec2.sh, then in the remote shell):
+     sudo -u ec2-user mkdir -p /home/ec2-user/.ssh
+     echo '<contents of ~/.ssh/ec2_synthrig.pub>' | sudo -u ec2-user tee -a /home/ec2-user/.ssh/authorized_keys
+     sudo chmod 700 /home/ec2-user/.ssh; sudo chmod 600 /home/ec2-user/.ssh/authorized_keys
+     systemctl is-active sshd
+   STATUS: NOT CONFIRMED. The last chmod command seen was run in a LOCAL PowerShell
+   terminal (exit 1), i.e. likely not on the instance. Verify it was run inside the
+   remote shell, or redo it.
+2. Test: `ssh synthrig-ec2 hostname` (needs a valid Okta login).
+   Unknown until tested: whether the role is allowed ssm:StartSession on the
+   AWS-StartSSHSession document. If denied, ask the cloud/IT team to allow it
+   (or allow EC2 Instance Connect / provide a key pair), or fall back to
+   VS Code over a different approved route.
+3. In VS Code: "Remote-SSH: Connect to Host..." -> synthrig-ec2. Install Python
+   extension on the remote, select interpreter, test debugging.
+4. If the connection works, consider moving the Host config details into
+   aws_connection_check/README.md and updating ssh_ec2.sh help text.
+5. Later: S3 checks (aws_connection_check/s3_config.json still unfilled; bucket not set).
+
+NOTES
+- aws_connection_check/ is outside the code/ Git repository.
+- ssh_ec2.sh originally used EC2 Instance Connect; now uses SSM start-session.
+- Never store AWS keys or tokens in configs or docs.

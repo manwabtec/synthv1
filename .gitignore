@@ -1,10 +1,14 @@
 out/
+data/
+*.blend
+*.blend1
 __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
 *.png
 !docs/*.png
+!docs/previews/*.png
 
 # Local AWS/Terraform configuration and generated state.
 infra/config.yaml

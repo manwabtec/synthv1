@@ -4,8 +4,8 @@ This repo renders synthetic images for a FIXED physical rig: 4 cameras (a stereo
 
 ## Architecture invariants (do not break)
 
-1. **Layering.** `synthrig/rig`, `synthrig/sensor`, `synthrig/stereo.py`, `synthrig/dataset` and `eval/` must NEVER import `bpy`. Only `synthrig/render/`, `synthrig/assets/` and `scenes/` may import it. There is a test for this. Keep it passing.
-2. **The rig is data.** Cameras, lasers, lights and sensor settings live only in `configs/rigs/*.yaml`, validated by `synthrig/rig/schema.py`. Never hard-code a camera or laser parameter in a scene or asset.
+1. **Layering.** `synthrig/opticsrig`, `synthrig/sensor`, `synthrig/stereo.py`, `synthrig/dataset` and `eval/` must NEVER import `bpy`. Only `synthrig/render/`, `synthrig/assets/` and `scenes/` may import it. There is a test for this. Keep it passing.
+2. **The rig is data.** Cameras, lasers, lights and sensor settings live only in `configs/opticsrigs/*.yaml`, validated by `synthrig/opticsrig/schema.py`. Never hard-code a camera or laser parameter in a scene or asset.
 3. **Scenes never touch** cameras, lasers, the sensor model, calibration, or file I/O. A scene only builds geometry and materials, registers objects with `ctx.add(obj, cls)`, and sets the rig pose.
 4. **Conventions.**
    - Device frames are OpenCV-style (x right, y down, z forward).
@@ -39,12 +39,17 @@ This repo renders synthetic images for a FIXED physical rig: 4 cameras (a stereo
 
 ## Workflow
 
+- The Git repository is `code/` beneath a non-Git parent; local generated data is
+   its sibling `data/`. Use `synthrig.paths` for output paths. AWS persistent data
+   belongs in S3; all push/pull code stays in `infra/`.
+- Local NVIDIA workstation validation is permitted while EC2 capacity is unavailable.
+   It does not complete AWS Phase 0 or authorize later scene phases.
 - Work in the phases of `docs/TASK_infra.md`, then `docs/TASK_scenes.md`, one phase per PR or commit. `python -m pytest -q` must pass after every phase.
 - After Phase 0, any render or test can also be run in the container: `python infra/cloud.py image test`.
 - For every new or changed scene, render a preview and look at it:
   ```
-  python run.py configs/runs/<scene>.yaml --frames 2 --scale 0.25 --samples 16 --out out/<scene>
-  python eval/preview.py out/<scene> --out out/<scene>_preview.png
+   python run.py configs/runs/<scene>.yaml --frames 2 --scale 0.25 --samples 16 --out datasets/<scene>
+   python eval/preview.py ../data/datasets/<scene> --out ../data/previews/<scene>.png
   ```
   Commit the preview to `docs/previews/` only when asked.
 - Before inventing real-world dimensions (wheel and rail profiles, car lengths, truck wheelbase), check `assets/profiles/` for a CSV. If none exists, use a clearly labelled placeholder and list it in the PR description. Do not present made-up numbers as standards.

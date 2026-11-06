@@ -19,9 +19,9 @@ import mathutils
 import numpy as np
 import OpenEXR
 
-from ..rig import RigModel
-from ..rig.camera import RenderPlan
-from ..rig.transforms import CV_TO_BLENDER_OBJ, inv_T, make_T, transform_points
+from ..opticsrig import RigModel
+from ..opticsrig.camera import RenderPlan
+from ..opticsrig.transforms import CV_TO_BLENDER_OBJ, inv_T, make_T, transform_points
 
 
 @dataclass
@@ -113,6 +113,10 @@ def _read_exr(path: str) -> np.ndarray:
 class BlenderBackend:
     def __init__(self, settings: RenderSettings | None = None, tmp_dir: str | None = None):
         self.s = settings or RenderSettings()
+        if self.s.device == "GPU":
+            from .devices import configure_gpu
+
+            configure_gpu()
         self.tmp_dir = tmp_dir or tempfile.mkdtemp(prefix="synthrig_")
         self._tex_cache: dict[str, tuple[np.ndarray, tuple[float, float]]] = {}
         self.rig: RigModel | None = None
@@ -257,7 +261,7 @@ class BlenderBackend:
             self._place(obj, L.T_rig_proj)
 
     def _build_lights(self, rig: RigModel):
-        from ..rig.transforms import pose_to_T
+        from ..opticsrig.transforms import pose_to_T
 
         for l in rig.spec.lights:
             kind = {"area": "AREA", "point": "POINT", "spot": "SPOT"}[l.type]

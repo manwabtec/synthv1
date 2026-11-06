@@ -76,3 +76,25 @@ def test_services_start_applies_storage_before_runtime(monkeypatch: pytest.Monke
         (cloud.STORAGE_DIR, "apply"),
         (cloud.RUNTIME_DIR, "apply"),
     ]
+
+
+def test_transfer_commands(monkeypatch, tmp_path):
+    from infra.storage import s3
+
+    calls = []
+    monkeypatch.setattr(cloud, "storage_client", lambda _uri: "client")
+    monkeypatch.setattr(s3, "push", lambda *args: calls.append(args) or 1)
+    monkeypatch.setattr(s3, "pull", lambda *args: calls.append(args) or 1)
+    assert cloud.main(["push", "datasets/demo", "--to", "s3://bucket/run", "--data-root", str(tmp_path)]) == 0
+    assert calls[0][1] == tmp_path / "datasets/demo"
+    assert cloud.main(["pull", "s3://bucket/run", "--frames", "0:2", "--data-root", str(tmp_path)]) == 0
+    assert calls[1][2] == tmp_path / "datasets/run"
+    assert calls[1][3] == (0, 2)
+
+
+@pytest.mark.parametrize("value", ["-1:2", "2:1", "1", "a:b", "0:1:2"])
+def test_bad_frame_range(value):
+    import argparse
+
+    with pytest.raises(argparse.ArgumentTypeError):
+        cloud.frame_range(value)

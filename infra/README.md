@@ -72,3 +72,7 @@ transfer and optional KMS charges can still apply.
 
 The commands intentionally fail until the two Terraform stacks are implemented
 in Phase 0.2. Do not run `start` or `stop` without reviewing the Terraform plan.
+## EC2 pipeline check
+
+Until VS Code Remote-SSH is approved, validate on EC2 with
+[`infra/ec2/check_ec2.sh`](ec2/README.md), and push the log back with `push_log.sh`.

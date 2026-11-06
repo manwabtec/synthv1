@@ -18,3 +18,4 @@ infra/**/*.tfstate
 infra/**/*.tfstate.*
 infra/**/*.tfplan
 infra/**/crash.log
+!logs/ec2/**/*.png

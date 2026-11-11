@@ -40,6 +40,22 @@ python3 infra/cloud.py status             # GPU, image, disk space left, running
 python3 infra/cloud.py submit --config configs/runs/app1_demo.yaml --frames 100 --shards 2
 ```
 
+## Before merging a branch: run the check script
+
+There is no CI. Before merging a branch (or after pulling one), run the check on the
+machine you are using, either the EC2 instance or a local NVIDIA machine:
+
+```bash
+bash infra/check.sh            # full check, about 2 min after the first image build
+bash infra/check.sh --quick    # skip the GPU-vs-CPU and demo renders
+```
+
+It runs these steps: system info, **disk space**, GPU driver, GPU inside Docker, image
+build, `image test` (all unit tests + a CPU smoke render + preview), `gpucheck` (OptiX vs
+CPU timing), a 2-frame GPU demo render with preview, and `cloud.py status`. Each step
+prints PASS/FAIL/SKIP and the script exits non-zero if any step fails. Logs go to
+`<data_root>/logs/check/<time>_<commit>/`; read `summary.txt` first.
+
 ## Quickstart on a workstation (uv)
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/). Run commands
@@ -92,7 +108,7 @@ project/                  Open this parent directory to see code and data togeth
         infra/                Docker image, cloud.py, worker, gpucheck, disk report, ec2/ scripts
         tests/                Automated correctness tests
         docs/                 Task specs, status, datasheets/, previews/, reference/
-        .github/              CI workflow, Copilot instructions
+        .github/              Copilot instructions
         .claude/              Claude Code instructions (imports AGENTS.md)
         .secrets/             Git credentials; ignored by git and Docker (see its README)
     data/                   Local outputs (on EC2: /app/synthrig on EBS); never committed

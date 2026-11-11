@@ -22,7 +22,7 @@ creates AWS resources.
 | `storage/disk.py` | Free-space report and the low-space guard used by `submit` and workers |
 | `docker/` | `Dockerfile` and `entrypoint.sh` |
 | `ec2/setup_host.sh` | Host setup: data dir, scratch mount, Docker data-root and NVIDIA runtime |
-| `ec2/check_ec2.sh` | End-to-end check that writes a log folder (see `ec2/README.md`) |
+| `check.sh` | End-to-end check, the replacement for CI: run it before merging a branch (EC2 or local) |
 | `access/check.py` | From a laptop: AWS identity, EC2 describe and SSM status for the instance |
 | `diagnostics/local.py` | `cloud.py local-check` for a non-Docker `uv` workstation install |
 
@@ -63,6 +63,8 @@ environment.
 `infra/config.yaml` is optional off EC2 and gitignored everywhere.
 
 ## Day to day
+
+Before merging a branch: `bash infra/check.sh` (there is no CI; see the root README).
 
 ```bash
 python3 infra/cloud.py status               # code, GPU, image freshness, disk space, running workers

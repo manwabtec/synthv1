@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Check that this EC2 instance can run the synthrig pipeline, and log the results.
+# Check that this machine (EC2 instance or local NVIDIA machine) can run the synthrig
+# pipeline, and log the results. Run it before merging a branch: there is no CI.
 #
-# Usage (from anywhere inside the repo, on the EC2 instance):
-#   bash infra/ec2/check_ec2.sh [--pull] [--quick] [--uv [--install-uv]]
+# Usage (from anywhere inside the repo):
+#   bash infra/check.sh [--pull] [--quick] [--uv [--install-uv]]
 #
 #   --pull        git pull --ff-only first, then re-run the updated script
 #   --quick       skip the GPU-vs-CPU gpucheck render and the demo render
@@ -13,14 +14,14 @@
 # gpucheck, a 2-frame GPU demo render via the image, and `cloud.py status`.
 #
 # Every step runs even if an earlier one fails (dependent steps are SKIPPED).
-# Output: <data_root>/logs/ec2/<UTC-time>_<commit>/   (data_root from infra/config.yaml)
+# Output: <data_root>/logs/check/<UTC-time>_<commit>/   (data_root from infra/config.yaml)
 #   summary.txt        one PASS/FAIL/SKIP line per step + timings  <- read this first
 #   run_info.txt       branch, commit, host, time
 #   NN_<step>.log      full output of each step
 #   preview_app1.png   demo render preview (if the render succeeded)
 #
 # Writes only: the Docker image and the data root's diagnostics/, previews/ and
-# logs/ec2/ (and .venv/ with --uv). Nothing is written into the git checkout.
+# logs/check/ (and .venv/ with --uv). Nothing is written into the git checkout.
 # It never starts AWS resources and never prints credentials.
 
 set -uo pipefail
@@ -46,7 +47,7 @@ if [ "$PULL" = 1 ]; then
   echo ">> git pull --ff-only"
   git pull --ff-only || { echo "git pull failed; fix it (local changes? diverged branch?) and retry."; exit 1; }
   rest=(); for a in "$@"; do [ "$a" != "--pull" ] && rest+=("$a"); done
-  exec bash "$CODE_ROOT/infra/ec2/check_ec2.sh" "${rest[@]}"
+  exec bash "$CODE_ROOT/infra/check.sh" "${rest[@]}"
 fi
 
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
@@ -56,7 +57,7 @@ SHA="$(git rev-parse --short HEAD)"
 RUN_ID="$(date -u +%Y%m%d-%H%M%SZ)_${SHA}"
 DATA_ROOT="$(python3 -B -c 'import sys; sys.path.insert(0, "."); from infra.cloud import load_config; print(load_config()["data_root"])')" || {
   echo "Could not read the data root from infra/config.yaml (see infra/cloud.py config)."; exit 2; }
-LOG_DIR="$DATA_ROOT/logs/ec2/$RUN_ID"
+LOG_DIR="$DATA_ROOT/logs/check/$RUN_ID"
 mkdir -p "$LOG_DIR"
 SUMMARY="$LOG_DIR/summary.txt"
 STEP_NO=0

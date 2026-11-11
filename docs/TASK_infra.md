@@ -164,7 +164,7 @@ All shards share the one GPU. `max_parallel_shards` (default 2) only triggers a 
 Instance-hour cost is not computed; `status --run` reports render-hours from frame
 timings.
 
-## Step 0.6: docs + guardrails ✅
+## Step 0.6: docs + guardrails + check script ✅
 
 - **Docs:** `infra/README.md` covers setup, day-to-day commands, resuming, disk space and
   cleanup.
@@ -175,12 +175,12 @@ timings.
   - `submit` and every worker frame refuse to run below `min_free_gb`.
 - **Status check:** `cloud.py status` reports the code, GPU, image (and whether it is
   stale), disk space and dataset sizes, and running workers. `cloud.py disk` reports only
-  the volumes. `infra/ec2/check_ec2.sh` runs both, together with image build/test,
+  the volumes. `infra/check.sh` runs both, together with image build/test,
   gpucheck and a demo render.
-- **CI:** `.github/workflows/ci.yml` builds the image and runs the tests and a CPU smoke
-  render on every PR. It uses no secrets and pushes nothing.
+- **No CI** (GitHub Actions is not available to this project). `bash infra/check.sh`
+  replaces it: run it before merging a branch, on EC2 or the local machine.
 
 ## Out of scope
-- S3, Terraform, ECR, AWS Batch, multi-instance scale-out, and idle auto-stop.
+- S3, Terraform, ECR, AWS Batch, multi-instance scale-out, idle auto-stop, and CI.
 - Kubernetes/EKS, SageMaker, a web UI, multi-region.
 - Deleting datasets from `cloud.py`. Deletes are manual on purpose.

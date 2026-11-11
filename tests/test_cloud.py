@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -6,95 +7,76 @@ import yaml
 from infra import cloud
 
 
-def valid_config() -> dict:
-    return {
-        "project": "synthrig",
-        "owner": "owner@example.com",
-        "cost_center": "research",
-        "aws_profile": "sandbox",
-        "region": "us-east-1",
-        "vpc_id": None,
-        "subnet_ids": [],
-        "bucket": "example-synthrig-bucket",
-        "ecr_repo": "synthrig",
-        "dev_instance_type": "g6.xlarge",
-        "batch_instance_types": ["g6.xlarge"],
-        "batch_max_vcpus": 4,
-        "use_spot": True,
-        "dev_idle_stop_minutes": 60,
-        "monthly_budget_usd": 100,
-    }
+def test_defaults_are_machine_neutral(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("SYNTHRIG_DATA_ROOT", str(tmp_path / "data"))
+    config = cloud.load_config(tmp_path / "missing.yaml")
+    assert config["data_root"] == str(tmp_path / "data")
+    assert config["scratch_dir"] == str(tmp_path / "data" / "scratch")
+    assert config["docker_root"] is None and config["min_free_gb"] == cloud.DEFAULTS["min_free_gb"]
 
 
-def write_config(path: Path, config: dict) -> None:
-    path.write_text(yaml.safe_dump(config), encoding="utf-8")
-
-
-def test_load_config_rejects_placeholders(tmp_path: Path):
-    config = valid_config()
-    config["bucket"] = "<globally-unique-name>"
+def test_config_overrides_defaults(tmp_path: Path):
     path = tmp_path / "config.yaml"
-    write_config(path, config)
+    path.write_text(yaml.safe_dump({"data_root": "/mnt/ebs", "min_free_gb": 5, "region": "us-east-1"}))
+    config = cloud.load_config(path)
+    assert config["data_root"] == "/mnt/ebs" and config["min_free_gb"] == 5
+    assert config["scratch_dir"] == "/mnt/ebs/scratch"
 
-    with pytest.raises(cloud.CloudError, match="unresolved placeholders: bucket"):
+
+@pytest.mark.parametrize("data, match", [
+    ({"owner": "<email>"}, "unresolved placeholders: owner"),
+    ({"bucket": "x"}, "unknown keys: bucket"),
+    ({"min_free_gb": 0}, "min_free_gb"),
+])
+def test_config_rejects_bad_values(tmp_path: Path, data, match):
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump(data))
+    with pytest.raises(cloud.CloudError, match=match):
         cloud.load_config(path)
 
 
-def test_load_config_requires_subnets_for_existing_vpc(tmp_path: Path):
-    config = valid_config()
-    config["vpc_id"] = "vpc-123"
-    path = tmp_path / "config.yaml"
-    write_config(path, config)
-
-    with pytest.raises(cloud.CloudError, match="subnet_ids is required"):
-        cloud.load_config(path)
-
-
-def test_services_stop_destroys_only_runtime(monkeypatch: pytest.MonkeyPatch):
-    calls = []
-    monkeypatch.setattr(cloud, "require_tool", lambda _name: None)
-    monkeypatch.setattr(cloud, "load_config", valid_config)
-    monkeypatch.setattr(cloud, "write_tfvars", lambda _config: None)
-    monkeypatch.setattr(cloud, "terraform", lambda directory, action: calls.append((directory, action)))
-
-    cloud.main(["services", "stop", "--yes"])
-
-    assert calls == [(cloud.RUNTIME_DIR, "destroy")]
+def test_container_mounts_data_and_runs_as_user(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr(cloud, "docker", lambda: ["docker"])
+    monkeypatch.setattr(cloud, "image_info", lambda _c: {"id": "sha256:abc"})
+    monkeypatch.setattr(cloud, "instance_type", lambda: "g5.xlarge")
+    config = {**cloud.DEFAULTS, "data_root": str(tmp_path / "d"), "scratch_dir": str(tmp_path / "s")}
+    cmd = cloud.container(config, ["pytest"], gpu=False)
+    assert "--gpus" not in cmd and "--rm" in cmd
+    assert f"{tmp_path / 'd'}:/data" in cmd and (tmp_path / "s").is_dir()
+    assert "SYNTHRIG_IMAGE_DIGEST=sha256:abc" in cmd and "SYNTHRIG_INSTANCE_TYPE=g5.xlarge" in cmd
+    assert cmd[-2:] == ["synthrig:latest", "pytest"]
+    detached = cloud.container(config, ["--config", "x"], detach=True, name="w0")
+    assert detached[2:5] == ["-d", "--restart", "on-failure:3"] and "--gpus" in detached
 
 
-def test_services_start_applies_storage_before_runtime(monkeypatch: pytest.MonkeyPatch):
-    calls = []
-    monkeypatch.setattr(cloud, "require_tool", lambda _name: None)
-    monkeypatch.setattr(cloud, "load_config", valid_config)
-    monkeypatch.setattr(cloud, "verify_identity", lambda _config: None)
-    monkeypatch.setattr(cloud, "write_tfvars", lambda _config: None)
-    monkeypatch.setattr(cloud, "terraform", lambda directory, action: calls.append((directory, action)))
-
-    cloud.main(["services", "start", "--yes"])
-
-    assert calls == [
-        (cloud.STORAGE_DIR, "apply"),
-        (cloud.RUNTIME_DIR, "apply"),
-    ]
+def test_docker_falls_back_to_sudo(monkeypatch):
+    monkeypatch.setattr(cloud.shutil, "which", lambda _n: "/usr/bin/docker")
+    monkeypatch.setattr(cloud.os, "access", lambda *_a: False)
+    assert cloud.docker() == ["sudo", "-n", "docker"]
 
 
-def test_transfer_commands(monkeypatch, tmp_path):
-    from infra.storage import s3
-
-    calls = []
-    monkeypatch.setattr(cloud, "storage_client", lambda _uri: "client")
-    monkeypatch.setattr(s3, "push", lambda *args: calls.append(args) or 1)
-    monkeypatch.setattr(s3, "pull", lambda *args: calls.append(args) or 1)
-    assert cloud.main(["push", "datasets/demo", "--to", "s3://bucket/run", "--data-root", str(tmp_path)]) == 0
-    assert calls[0][1] == tmp_path / "datasets/demo"
-    assert cloud.main(["pull", "s3://bucket/run", "--frames", "0:2", "--data-root", str(tmp_path)]) == 0
-    assert calls[1][2] == tmp_path / "datasets/run"
-    assert calls[1][3] == (0, 2)
+def test_submit_refuses_dirty_tree_and_stale_image(monkeypatch, capsys):
+    defaults = cloud.load_config(Path("/nonexistent.yaml"))
+    monkeypatch.setattr(cloud, "load_config", lambda: dict(defaults))
+    monkeypatch.setattr(cloud, "git_state", lambda: {"sha": "abc1234", "branch": "b", "dirty": True})
+    monkeypatch.setattr(cloud, "image_info", lambda _c: {"id": "x", "git_sha": "0000000", "git_dirty": "false"})
+    rc = cloud.main(["submit", "--config", "configs/runs/app1_demo.yaml", "--frames", "2"])
+    err = capsys.readouterr().err
+    assert rc == 2 and "uncommitted changes" in err and "built from 0000000" in err
 
 
-@pytest.mark.parametrize("value", ["-1:2", "2:1", "1", "a:b", "0:1:2"])
-def test_bad_frame_range(value):
-    import argparse
+def _frame(run_dir: Path, idx: int, seconds: float, done: bool = True):
+    d = run_dir / "frames" / f"{idx:06d}"
+    d.mkdir(parents=True)
+    (d / "meta.json").write_text(json.dumps({"timings_s": {"total": seconds}}))
+    if done:
+        (d / "_DONE").write_text("{}")
 
-    with pytest.raises(argparse.ArgumentTypeError):
-        cloud.frame_range(value)
+
+def test_run_status_counts_only_done_frames(tmp_path: Path):
+    (tmp_path / "manifest.json").write_text(json.dumps({"run_config": {"frames": 4}}))
+    _frame(tmp_path, 0, 10.0)
+    _frame(tmp_path, 1, 20.0)
+    _frame(tmp_path, 2, 99.0, done=False)
+    s = cloud.run_status(tmp_path)
+    assert (s["frames_done"], s["frames_total"], s["mean_frame_s"], s["remaining_s"]) == (2, 4, 15.0, 30)

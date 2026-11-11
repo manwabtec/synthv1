@@ -24,12 +24,28 @@ scene ────┘   pinhole canvas      noise, bloom,    disparity,       (f
 
 The rig, sensor, dataset and eval packages are renderer-agnostic. If you later move to Mitsuba or Isaac, only `synthrig/render` and the scenes change.
 
-## Quickstart
+## Quickstart with Docker (EC2 GPU instance or local NVIDIA machine)
+
+The same image runs on the project's EC2 g5.xlarge (A10G) and on a local NVIDIA machine
+(Linux or WSL2, with the NVIDIA Container Toolkit). On EC2, datasets live on its EBS
+volume at `/app/synthrig`; locally they go to `../data` by default. There is no S3.
+Details: [`infra/README.md`](infra/README.md).
+
+```bash
+bash infra/ec2/setup_host.sh              # EC2 only: once, and after every stop/start
+python3 infra/cloud.py image build        # Python 3.11 + Blender 4.2 image
+python3 infra/cloud.py image test         # tests + CPU smoke render + preview
+python3 infra/cloud.py gpucheck           # OptiX vs CPU timing
+python3 infra/cloud.py status             # GPU, image, disk space left, running workers
+python3 infra/cloud.py submit --config configs/runs/app1_demo.yaml --frames 100 --shards 2
+```
+
+## Quickstart on a workstation (uv)
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/). Run commands
 from the `code/` repository directory. A lightweight PC needs only the standard
 dependencies; a rendering workstation also needs Blender's Python module and an
-NVIDIA driver for GPU rendering. AWS execution remains a separate Phase 0 task.
+NVIDIA driver for GPU rendering.
 
 ```bash
 uv sync
@@ -57,17 +73,15 @@ uv run python eval/dots_eval.py ../data/datasets/app1_demo
 uv run python eval/stereo_eval.py ../data/datasets/app1_demo
 ```
 
-The EC2 image installs Blender 4.2 and the `render` dependency group. The
-interactive EC2 and Batch commands are defined by Phase 0 in
-[`docs/TASK_infra.md`](docs/TASK_infra.md); until those steps are implemented,
-there is no working remote render command. Commit `uv.lock`; do not commit `.venv/`.
+The Docker image installs Blender 4.2 and the `render` dependency group from `uv.lock`
+(see [`docs/TASK_infra.md`](docs/TASK_infra.md)). Commit `uv.lock`; do not commit `.venv/`.
 
 ## Repository and data layout
 
 ```text
 project/                  Open this parent directory to see code and data together
     code/                   Git repository, including .git and this README
-        infra/                access/, diagnostics/, storage/, AWS orchestration
+        infra/                docker/, ec2/, storage/ (disk space), worker, cloud.py
         synthrig/             opticsrig/, sensor/, render/, dataset/, stereo.py
         scenes/               Final environment plugins; never define hardware here
         configs/              opticsrigs/, runs/, experiments/, scenes/, materials/
@@ -76,7 +90,7 @@ project/                  Open this parent directory to see code and data togeth
         eval/                 Dataset evaluation and image previews
         docs/datasheets/      Hardware sources and provenance, not duplicate runtime values
         tests/                Automated correctness tests
-    data/                   Local outputs and S3 downloads; never committed
+    data/                   Local outputs (on EC2: /app/synthrig on EBS); never committed
         datasets/
         previews/
         scenes/
@@ -108,25 +122,19 @@ they do not change the physical rig or add hidden randomness. Existing case
 files are never overwritten. Dotted config edits address mappings, not list
 indices; edit camera/laser lists directly in YAML and validate afterward.
 
-## S3 dataset transfers
+## Storage and disk space
 
-Configure `infra/config.yaml` and authenticate through AWS SSO locally (or use an
-IAM role with `aws_profile: null`). No credentials belong in the repository.
+On EC2, all data stays on the instance's EBS volume (`/app/synthrig`); render scratch is
+the instance-store NVMe (`/scratch`, erased on stop/start). Check how much space is left
+before large runs:
 
 ```bash
-uv run python infra/cloud.py push datasets/app1_demo --to s3://YOUR-BUCKET/datasets/app1/run-001
-uv run python infra/cloud.py pull s3://YOUR-BUCKET/datasets/app1/run-001 --out datasets/aws-app1
-uv run python infra/cloud.py pull s3://YOUR-BUCKET/datasets/app1/run-001 --frames 0:10 --out datasets/aws-subset
+python3 infra/cloud.py disk          # per-volume size/used/free, dataset sizes, frames that still fit
+python3 infra/cloud.py disk --json
 ```
 
-Push/pull preserve format v1, verify SHA-256, skip matching files and reject
-conflicting files. Frame ranges are half-open. Each snapshot includes a
-`_TRANSFER.json` checksum index; `_DONE` markers are published last. Pull expects
-this index, so legacy/worker uploads without it are not yet supported. Push only
-finished datasets, not a directory being rendered. Use a new prefix for changed
-or extended runs; these transfers create immutable snapshots, not mirror/delete
-syncs. Integrity checking reads remote content and can incur S3 request/transfer
-charges. These commands do not provision resources or submit render jobs.
+`submit` and every shard worker refuse to render when the data root has less than
+`min_free_gb` (default 20 GiB) free. Datasets are never deleted by the tools.
 
 ## Coordinate frames (read this once)
 
@@ -191,4 +199,4 @@ Edit `configs/opticsrigs/*.yaml`. The schema (`opticsrig/schema.py`) validates e
 * `power_w` values are relative Blender watts. Calibrate brightness with `sensor.exposure` against a real capture.
 * There is no motion blur or rolling shutter. Cycles supports motion blur if you need it for a moving target such as a rolling wheel.
 * Square pixels only (fx = fy).
-* Performance: about 60 s per frame for 4 cameras at half resolution with 16 samples on 2 CPU cores. Use a GPU (`render.device: GPU`) for production. Laser dots are direct light, so they are noise-free at any sample count; samples only affect ambient and diffuse noise.
+* Performance (demo rig, 4 cameras, half resolution, 16 samples): 8.7 s per frame on an A10G with OptiX and 55 s on the g5.xlarge's 4 vCPUs (`cloud.py gpucheck`). Use `render.device: GPU` (or `OPTIX`/`CUDA`) for production. Before 2026-11-10 the GPU setting was silently ignored after the first scene reset, so earlier "GPU" timings were CPU timings. Laser dots are direct light, so they are noise-free at any sample count; samples only affect ambient and diffuse noise.

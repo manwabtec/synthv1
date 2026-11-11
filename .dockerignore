@@ -1,0 +1,13 @@
+.git
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+logs
+out
+data
+*.blend
+*.blend1
+infra/config.yaml
+docs/reference
+docs/previews

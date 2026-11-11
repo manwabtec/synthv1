@@ -5,11 +5,12 @@ then pull and run on EC2, then push the log back and read it on the laptop.
 
 | File | Runs on | Purpose |
 |---|---|---|
-| `check_ec2.sh` | EC2 | Checks the system, GPU, tools, network, `uv sync --extra render`, Blender import, pytest, CPU/GPU smoke renders and a demo render with a preview, then writes a log folder |
+| `setup_host.sh` | EC2 (sudo) | Creates `/app/synthrig` on EBS, mounts the instance-store NVMe at `/scratch` (re-run after every stop/start: it is erased), registers the NVIDIA Docker runtime and moves Docker's data-root to `/app/docker` |
+| `check_ec2.sh` | EC2 | Checks the system, **disk space**, GPU, GPU-in-Docker, image build + test, gpucheck (GPU vs CPU), a demo render with preview, and `cloud.py status`, then writes a log folder. `--uv` adds the host uv/.venv checks; `--quick` skips the renders |
 | `push_log.sh` | EC2 | Commits one log folder and pushes it |
 | `../../logs/ec2/<UTC-time>_<commit>/` | both | One folder per run: `summary.txt`, `run_info.txt`, `NN_<step>.log`, `preview_app1.png` |
 
-Neither script starts AWS resources or prints credentials.
+None of these scripts starts AWS resources or prints credentials.
 
 ## One-time setup on the instance
 
@@ -35,8 +36,8 @@ mkdir -p ~/synthv1 && cd ~/synthv1
 git clone -b InitialCommit git@github.com:manwabtec/synthv1.git code
 ```
 
-The check script tells you if `uv` is missing. Run it with `--install-uv` to
-install it user-level. uv also downloads Python 3.11 if the system doesn't have it.
+The default checks use Docker and the system `python3`; `uv` is only needed with `--uv`
+(add `--install-uv` to install it user-level).
 
 ## Each round
 
@@ -46,7 +47,8 @@ Run on the instance. Use `tmux` so a dropped session doesn't kill the run;
 ```bash
 cd ~/synthv1/code
 tmux new -s check                       # or: tmux attach -t check
-bash infra/ec2/check_ec2.sh --pull      # add --quick to skip the demo render
+bash infra/ec2/setup_host.sh            # only after a stop/start (re-mounts /scratch)
+bash infra/ec2/check_ec2.sh --pull      # add --quick to skip the renders
 bash infra/ec2/push_log.sh
 ```
 

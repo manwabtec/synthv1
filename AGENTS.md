@@ -27,25 +27,24 @@ This repo renders synthetic images for a FIXED physical rig: 4 cameras (a stereo
 
 ## Order of work
 
-1. `docs/TASK_infra.md` (Phase 0: AWS environment, meaning Docker + ECR + S3 + EC2 GPU + Batch). Do this first.
+1. `docs/TASK_infra.md` (Phase 0: one Docker image with Blender, a GPU check and a resumable shard worker, run on the EC2 GPU instance or a local NVIDIA machine; data on local/EBS disk, no S3). Do this first.
 2. `docs/TASK_scenes.md` (Phases 1-4: asset library and the four railway scenes).
 
 ## Infrastructure rules
 
-- All AWS code lives in `infra/`. `synthrig/` must stay cloud-agnostic: no boto3, no S3 paths.
-- Account-specific values live only in `infra/config.yaml`. Never commit credentials. Use IAM roles and SSO only.
-- Every AWS resource is created by Terraform, is tagged, and can be destroyed with one command.
-- Never run `terraform apply`, `destroy`, `submit`, or anything that starts paid resources without the user explicitly saying so in that request. `plan` and `image test` are always fine.
+- All AWS and host code lives in `infra/`. `synthrig/` must stay cloud-agnostic: no boto3, no cloud paths.
+- Machine-specific values (paths, thresholds) live only in `infra/config.yaml`. Never commit credentials. Use IAM roles and SSO only.
+- There is no S3, Terraform, ECR or Batch. Renders run on one existing EC2 GPU instance or a local NVIDIA machine, with the same image. On EC2, datasets live on the EBS volume (`/app/synthrig`); `/scratch` (instance-store NVMe) is render scratch only and is erased on stop/start.
+- Never start paid AWS resources (new instances, volumes, services) without the user explicitly saying so in that request. `cloud.py status|disk|image build|image test|gpucheck` are always fine; long `submit` runs need the user's go-ahead.
 
 ## Workflow
 
 - The Git repository is `code/` beneath a non-Git parent; local generated data is
-   its sibling `data/`. Use `synthrig.paths` for output paths. AWS persistent data
-   belongs in S3; all push/pull code stays in `infra/`.
-- Local NVIDIA workstation validation is permitted while EC2 capacity is unavailable.
-   It does not complete AWS Phase 0 or authorize later scene phases.
+   its sibling `data/`. Use `synthrig.paths` for output paths. In the container the data
+   root is `/data` (mounted from `data_root` in `infra/config.yaml`). Check free space with
+   `python3 infra/cloud.py disk` before large runs.
 - Work in the phases of `docs/TASK_infra.md`, then `docs/TASK_scenes.md`, one phase per PR or commit. `python -m pytest -q` must pass after every phase.
-- After Phase 0, any render or test can also be run in the container: `python infra/cloud.py image test`.
+- After Phase 0, any render or test can be run in the container: `python3 infra/cloud.py image test`, or `python3 infra/cloud.py exec --mount-code -- <cmd>` for uncommitted code.
 - For every new or changed scene, render a preview and look at it:
   ```
    python run.py configs/runs/<scene>.yaml --frames 2 --scale 0.25 --samples 16 --out datasets/<scene>

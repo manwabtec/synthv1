@@ -1,4 +1,4 @@
 Follow the rules in `AGENTS.md` at the repo root (architecture invariants, conventions, infrastructure rules, workflow).
-Order of work: `docs/TASK_infra.md` (Phase 0, AWS environment) first, then `docs/TASK_scenes.md`, phase by phase. Do not start a phase before the previous one's acceptance checks pass.
-Key rules: only `synthrig/render`, `synthrig/assets` and `scenes/` may import `bpy`; AWS code only in `infra/`; the rig is defined only in `configs/opticsrigs/*.yaml`;
-all randomness lives in `sample_params`/`sample_sequence`; the dataset format changes additively only; never apply/destroy/submit paid AWS resources unless the user explicitly asks.
+Order of work: `docs/TASK_infra.md` (Phase 0: Docker image with Blender + GPU check + shard worker, on the EC2 GPU instance or a local NVIDIA machine) first, then `docs/TASK_scenes.md`, phase by phase. Do not start a phase before the previous one's acceptance checks pass.
+Key rules: only `synthrig/render`, `synthrig/assets` and `scenes/` may import `bpy`; AWS/host code only in `infra/`; the rig is defined only in `configs/opticsrigs/*.yaml`;
+all randomness lives in `sample_params`/`sample_sequence`; the dataset format changes additively only; there is no S3 (datasets live on the machine's disk, EBS `/app/synthrig` on EC2); never start paid AWS resources unless the user explicitly asks.

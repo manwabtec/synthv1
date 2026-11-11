@@ -1,187 +1,186 @@
-# Task (Phase 0, do this FIRST): AWS render environment, using EC2 + S3 + Blender
+# Task (Phase 0, do this FIRST): single EC2 GPU render environment
 
-Goal: the same container that runs locally must also run on AWS GPU instances. It renders dataset shards and writes them to S3. This must work before any scene work starts (`docs/TASK_scenes.md`), so every later phase can be tested at scale.
+Goal: one Docker image, with Blender, that runs the tests and renders datasets on the
+project's existing EC2 GPU instance. Datasets are stored on the instance's EBS data
+volume. This must work before any scene work starts (`docs/TASK_scenes.md`), so every
+later phase can be tested at scale.
 
-Follow `AGENTS.md`. Deliver it in the steps below. Each step ends with its acceptance check passing and the result reported in the PR.
+**Scope change (2026-11-10).** The original plan used S3, Terraform, ECR and AWS Batch.
+No S3 bucket is available, and the organisation's IAM policy restricts creating
+infrastructure. Phase 0 is therefore scoped to the one existing instance:
+
+- No S3, no Terraform, no ECR, no Batch, no new AWS resources.
+- Scale-out across instances is out of scope. The worker's shard contract is kept, so a
+  shared filesystem (e.g. EFS) plus Batch could be added later without changing it.
+- The same image and `cloud.py` also run on a local NVIDIA workstation (Linux/WSL2 +
+  NVIDIA Container Toolkit). The code defaults are the workstation ones (data in
+  `../data`); EC2 paths come from `infra/config.yaml`, which `setup_host.sh` writes.
+
+Follow `AGENTS.md`. Each step ends with its acceptance check passing.
 
 ---
 
-## Design decisions (already made, do not change them without asking)
+## Design decisions
 
 | Topic | Decision |
 |---|---|
-| Infrastructure as code | **Terraform** in `infra/terraform/`. Everything is tagged, and everything can be destroyed with one command. No click-ops. |
-| Runtime | **One Docker image** (`infra/docker/Dockerfile`), used locally, on the dev box, and in batch jobs. It is pushed to **ECR**. |
-| Blender | Pinned to **4.2 LTS**. The version, the image digest and the git commit are written into every dataset's `manifest.json` (see step 4). |
-| Interactive work | One **GPU dev instance**, reached through **SSM Session Manager** (no SSH keys, no open inbound ports). It auto-stops when idle. |
-| Scale-out | **AWS Batch** on EC2 GPU instances, **Spot** first with an On-Demand fallback. Jobs run as **array jobs**: array index = shard. The compute environment scales to 0 vCPU when idle. |
-| Storage | One private **S3** bucket for datasets. The worker renders to local NVMe/EBS scratch, then uploads each finished frame directory. |
-| Credentials | IAM roles only (an instance profile and a Batch job role, least privilege, limited to this bucket and ECR repo). No access keys anywhere in the repo, the image, or the env files. |
-| Cloud awareness | `synthrig/` stays cloud-agnostic. All AWS code lives in `infra/`. The pipeline keeps writing to a local directory, and `infra/worker.py` wraps it and uploads. |
+| Host | The existing instance `i-0850e2a48e8724f0a`: a g5.xlarge with an NVIDIA A10G 24 GB, Amazon Linux 2023 and NVIDIA driver 580, reached through SSM Session Manager or VS Code. |
+| Storage | **EBS** volume at `/app`. Datasets, previews, logs and diagnostics go in `/app/synthrig`. Docker images go in `/app/docker`, because the 30 GB root disk is too small. |
+| Scratch | The **instance-store NVMe** (233 GB) mounted at `/scratch`. It is fast, but erased on every stop/start: `infra/ec2/setup_host.sh` re-creates it. Workers render there, then move finished frames to EBS. |
+| Runtime | **One Docker image** (`infra/docker/Dockerfile`), used for tests, GPU checks and rendering. It is built locally on the instance, with no registry. |
+| Blender | Pinned to **4.2 LTS** via the `bpy==4.2.0` wheel (option A). Option B, the official tarball, is not needed: the GPU check passes with OptiX. The Blender version, image ID and git commit are written into every dataset's `manifest.json` (`generator_env`). |
+| Host tooling | `infra/cloud.py` runs with the system `python3` (3.9) and PyYAML only. Everything that needs Blender runs in the container. The user is not in the `docker` group, so `cloud.py` calls `sudo -n docker`. |
+| Credentials | None in the repo, the image or configs. AWS access from a laptop uses Okta → SSO (`docs/ONGOING_WORK.txt`). |
+| Cloud awareness | `synthrig/` stays cloud-agnostic. `infra/worker.py` wraps the `Pipeline`. |
 
-## Configuration: `infra/config.yaml` (the ONLY place for account-specific values)
+## Configuration: `infra/config.yaml` (optional)
 
-```yaml
-project: synthrig
-owner: <email or team>             # used in tags
-cost_center: <code>                # tag, if our org requires it
-aws_profile: <sso profile name>     # local CLI profile (SSO), never keys
-region: us-east-1                   # confirm with cloud team
-vpc_id: null                        # null = create a minimal VPC; else use existing (org may require this)
-subnet_ids: []                      # private subnets with NAT or VPC endpoints
-bucket: <globally-unique-name>
-ecr_repo: synthrig
-dev_instance_type: g6.xlarge        # NVIDIA L4; alternatives g5.xlarge (A10G), g4dn.xlarge (T4)
-batch_instance_types: [g6.xlarge, g6.2xlarge, g5.xlarge, g5.2xlarge]
-batch_max_vcpus: 64
-use_spot: true
-dev_idle_stop_minutes: 60
-monthly_budget_usd: <number>        # creates an AWS Budget alert to `owner`
-```
-Organisations often mandate an existing VPC, approved AMIs, permission boundaries or required tags. Make each of these a config value, not a code change. Do not hard-code instance prices anywhere.
+Machine-neutral defaults live in `infra/cloud.py` (`DEFAULTS`): the data root is
+`SYNTHRIG_DATA_ROOT` or `../data`, and scratch is `<data_root>/scratch`. On EC2,
+`setup_host.sh` writes `infra/config.yaml` with `/app/synthrig`, `/scratch` and
+`/app/docker`. Copy `infra/config.example.yaml` to override them: `data_root`, `scratch_dir`, `docker_root`, `image`, `min_free_gb` and
+`max_parallel_shards`. Unknown keys and `<placeholders>` are rejected.
 
-## Target S3 layout
+## Run directory layout (on EBS)
 
 ```
-s3://<bucket>/datasets/<scene>/<rig_hash>/<run_id>/
-    manifest.json  rig.yaml  calib/...          # written once by `submit`, before shards start
-    frames/<NNNNNN>/...                          # uploaded by workers, one frame dir at a time
-    frames/<NNNNNN>/_DONE                        # written LAST for each frame => resumable, idempotent
+/app/synthrig/datasets/<scene>/<rig_hash>/<run_id>/
+    manifest.json  rig.yaml  calib/...      # written once by `submit`, before workers start
+    submit.json                              # submit parameters, used by `resume`
+    frames/<NNNNNN>/...                      # moved in from /scratch by workers, one frame at a time
+    frames/<NNNNNN>/_DONE                    # written LAST for each frame => resumable, idempotent
     logs/shard_<k>.log
-s3://<bucket>/scratch/...                        # lifecycle rule: expire after 14 days
 ```
-`run_id` = UTC timestamp + short git sha. A frame counts as done only if it has `_DONE`. Workers skip done frames, so re-running a failed array job never duplicates work.
+`run_id` is the UTC timestamp plus the short git sha, unless `--run-id` is given. A frame
+counts as done only if it has `_DONE`. Workers skip done frames.
 
 ---
 
-## Step 0.1: container (local only, no AWS yet)
+## Step 0.0: host setup ✅
 
-`infra/docker/Dockerfile`:
-- Base: an NVIDIA CUDA runtime image (Ubuntu 22.04), so Cycles can use CUDA/OptiX when a GPU exists and fall back to CPU when not.
-- Install Python 3.11 plus the repo's dependencies, and Blender 4.2 LTS. Two options. Implement **A** first; switch to **B** only if the GPU check in step 0.3 fails:
-  - **A:** `pip install bpy==4.2.0` (the current dev path).
-  - **B:** the official Blender 4.2 LTS Linux tarball (checksum verified), with the repo's deps pip-installed into Blender's bundled Python. Run via `blender -b --python run.py -- <args>`.
-- Install Blender's headless runtime libraries (libGL, libX11/Xi/Xrender/Xxf86vm, libxkbcommon, libSM, etc.). Keep the image small: multi-stage build, no build toolchain in the final layer.
-- Entrypoint: `infra/worker.py` (step 0.4). `docker run <image> pytest` must also work.
+`bash infra/ec2/setup_host.sh` (needs sudo; idempotent; run again after every stop/start)
+does the following:
+- Creates `/app/synthrig`, owned by the user.
+- Formats the instance-store NVMe if it is blank and mounts it at `/scratch`. It never
+  formats EBS.
+- Registers the NVIDIA container runtime with Docker and moves Docker's data-root to
+  `/app/docker`. The Docker daemon restarts only if something changed.
 
-`infra/cloud.py` is a small Python CLI (argparse + boto3; subprocess for docker/terraform). It is the single entry point for everything in this task. Start with:
+**Accept:** `cloud.py status` shows the GPU and both volumes, and a CUDA container can see
+the GPU.
+
+## Step 0.1: container ✅
+
+The `infra/docker/Dockerfile` image has:
+- A CUDA 12.4 *base* image on Ubuntu 22.04. The host driver provides CUDA and OptiX at
+  run time.
+- A multi-stage build: uv installs Python 3.11 and the locked dependencies (including
+  `bpy==4.2.0` and pytest) into `/opt/venv`.
+- No build toolchain in the final layer, only the headless X/GL libraries `bpy` needs.
+- Entrypoint `infra/docker/entrypoint.sh`: `docker run <image> pytest` works; any other
+  arguments go to `infra/worker.py`.
+
 ```
-python infra/cloud.py image build            # docker build, tag with git sha
-python infra/cloud.py image test             # docker run ... pytest -q  (+ 1-frame CPU render at scale 0.125)
+python3 infra/cloud.py image build    # tags synthrig:<sha>[-dirty] and synthrig:latest, git labels
+python3 infra/cloud.py image test     # pytest in the image + 1-frame CPU render at scale 0.125 + preview
 ```
-**Accept:** `image test` runs the container's unit tests on a laptop without
-requiring a local GPU. The CPU render smoke test may be run on a capable
-workstation; the required GPU render verification is performed on the EC2 GPU
-dev instance in step 0.3. The rendered frame opens with `eval/preview.py`.
+**Accept:** `image test` passes, and the preview (`/app/synthrig/previews/image_test.png`)
+shows all cameras, the dots, the rectified pair and the disparity.
 
-## Step 0.2: base infrastructure (Terraform)
+## Step 0.2: infrastructure as code (dropped)
 
-`infra/terraform/` must create:
-- **The S3 bucket:**
-  - Block all public access.
-  - SSE-S3 (or KMS if the org requires it).
-  - A lifecycle rule on `scratch/`.
-  - Abort incomplete multipart uploads after 7 days.
-- **Networking, only if `vpc_id` is null:**
-  - A minimal VPC.
-  - A gateway VPC endpoint for S3, so render traffic avoids the NAT.
-  - Interface endpoints for ECR, SSM and CloudWatch Logs, so private instances work without public IPs.
-- **The ECR repo:** scan-on-push enabled, and a lifecycle rule that keeps the last 20 images.
-- **IAM:**
-  - An instance/job role with read/write on `s3://<bucket>/datasets/*` and `scratch/*` only.
-  - ECR pull.
-  - CloudWatch Logs.
-  - `AmazonSSMManagedInstanceCore` for the dev box.
-- **An AWS Budget** with an email alert to `owner`.
-- **Tags on every resource:** `project`, `owner`, `cost_center`, `managed_by=terraform`.
+There are no new AWS resources, so Terraform is not needed. The instance, its EBS volume
+and its IAM role are managed by the cloud team.
 
-CLI:
+## Step 0.3: GPU check ✅
+
+`python3 infra/cloud.py gpucheck` runs `infra/gpucheck.py` in the container with
+`--gpus all`. It:
+1. Prints `nvidia-smi` and Blender's Cycles device list.
+2. Enables OptiX, falling back to CUDA.
+3. Renders the demo frame at scale 0.5 with 16 samples, first on GPU and then on CPU,
+   and prints both times.
+4. Fails unless a GPU device is enabled and the GPU render is faster.
+
+It writes `diagnostics/gpucheck/result.json`. `--device OPTIX|CUDA|GPU|CPU` is accepted
+by `run.py`, the worker and `submit`.
+
+**Result (2026-11-10, g5.xlarge):** OptiX on the A10G took 8.7 s; CPU took 55.2 s (6.3×).
+This step found a bug: `BlenderBackend.new_frame` called `read_factory_settings`, which
+reset the Cycles device, so every frame had been rendering on CPU. It is fixed by
+re-applying the GPU selection after the reset.
+
+Idle auto-stop (a CloudWatch alarm) is dropped from this scope: it needs new AWS
+resources.
+
+## Step 0.4: worker + shard contract ✅
+
 ```
-python infra/cloud.py infra plan | apply | destroy
-python infra/cloud.py image push             # push to ECR, print the digest
+worker.py --config configs/runs/<x>.yaml --run-dir datasets/<scene>/<rig_hash>/<run_id>
+          --shard-index K --num-shards N --frames-total F
+          [--scale s] [--samples n] [--device OPTIX|CUDA|GPU|CPU] [--scratch /scratch] [--min-free-gb G]
 ```
-**Accept:** `apply` and then `destroy` leave nothing behind. `infra/cloud.py audit` lists every resource tagged `project=synthrig` and must print nothing after `destroy`.
+- **Frame range per shard:** contiguous blocks, `start = K * ceil(F/N)`.
+- **For each frame:**
+  1. Skip it if `_DONE` exists.
+  2. Check free space on the run dir's filesystem (`--min-free-gb`).
+  3. Render it into scratch with `Pipeline.render_frame(idx)`.
+  4. Move it into the run dir under a temporary name and rename it into place.
+  5. Write `_DONE`.
+- **SIGTERM/SIGINT** (`docker stop`, `cloud.py stop`) abandons the current frame,
+  cleans scratch and exits 143. `bpy` replaces Python's signal handlers on import, so
+  the handlers are installed after the `Pipeline` exists. A stop flag checked between
+  frames backs them up.
+- **Logs** go to stdout (`docker logs`) and to `logs/shard_<k>.log`.
+- **Changes to `synthrig`** (additive):
+  - `Pipeline(write_header=False)` and a public `Pipeline.write_header()`.
+  - `run.py --header-only`.
+  - A `generator_env` block in `manifest.json`: Blender and Python versions, git sha and
+    dirty flag, `allow_dirty`, image ID, render device, and instance type (from IMDSv2,
+    or `local`).
+  - `created` stays in the manifest, which keeps the format additive. Only `submit`
+    writes the header; workers refuse to run without it, or if the rig hash or render
+    scale differ.
 
-## Step 0.3: GPU dev instance
+**Accept (2026-11-10):**
+- A 2-shard × 4-frame `submit` produces the same frame set as a single `run.py` run.
+  `meta.json` (minus timings), `dots.npz`, depth, segmentation, disparity and masks are
+  byte-identical. Radiance differs by OptiX float noise (≤ 4e-4, occasionally 1 DN in an
+  image).
+- A 30-frame worker stopped after 3 frames exits 143 in 0.4 s and leaves no scratch
+  behind. `resume` then rendered only the 27 missing frames.
 
-- AMI: the latest **AWS Deep Learning Base GPU AMI (Ubuntu 22.04)**, looked up by SSM parameter or name filter, never a hard-coded AMI id. It ships with the NVIDIA driver, Docker and the NVIDIA container toolkit.
-- The instance runs in a private subnet with the instance profile from 0.2. It has no key pair and no inbound security-group rules.
-- Root EBS volume of at least 100 GB, gp3.
-- Idle auto-stop: a CloudWatch alarm on low CPU **and** low GPU utilisation for `dev_idle_stop_minutes` triggers a stop action. (Publish GPU utilisation with the CloudWatch agent's `nvidia_gpu` metrics.)
+## Step 0.5: runs on the instance ✅ (replaces AWS Batch)
 
-CLI:
 ```
-python infra/cloud.py dev up | down | status
-python infra/cloud.py dev shell              # SSM session
-python infra/cloud.py dev run -- <cmd>       # runs inside the container on the dev box
-python infra/cloud.py dev gpucheck           # see below
+python3 infra/cloud.py submit --config configs/runs/app1_demo.yaml --frames 1000 --shards 2 [--scale ..] [--samples ..]
+      # checks the git tree + image are clean and disk space is enough, writes the header,
+      # starts one detached worker container per shard (restart on-failure up to 3x)
+python3 infra/cloud.py status --run <run dir>   # frames with _DONE, s/frame, render-hours, size, ETA, worker states
+python3 infra/cloud.py stop <run dir>           # graceful stop; finished frames are kept
+python3 infra/cloud.py resume <run dir>         # restart all shards; only missing frames render
 ```
-`gpucheck` (script at `infra/gpucheck.py`, run inside the container):
-1. Print `nvidia-smi` output and Blender's Cycles device list.
-2. Enable OptiX (fall back to CUDA).
-3. Render the demo frame at scale 0.5 on GPU and then on CPU, and print both render times.
-4. Assert that the GPU was actually used (the device list is non-empty and the GPU render is faster).
+All shards share the one GPU. `max_parallel_shards` (default 2) only triggers a warning.
+Instance-hour cost is not computed; `status --run` reports render-hours from frame
+timings.
 
-If option A (the pip `bpy` wheel) shows no GPU devices, switch the Dockerfile to option B and say so in the PR.
+## Step 0.6: docs + guardrails ✅
 
-**Accept:** `dev up` gives a running box, `gpucheck` passes and reports OptiX, and `dev down` stops it. Report the GPU vs CPU render times for the demo frame in the PR.
-
-## Step 0.4: worker + S3 output (the shard contract)
-
-`infra/worker.py` (the container entrypoint):
-```
-worker.py --config configs/runs/<x>.yaml --run-uri s3://<bucket>/datasets/<scene>/<rig_hash>/<run_id>
-          --shard-index ${AWS_BATCH_JOB_ARRAY_INDEX:-0} --num-shards N --frames-total F
-          [--scale s] [--samples n] [--device OPTIX|CUDA|CPU]
-```
-- **Frame range per shard:** contiguous blocks, `start = shard * ceil(F/N)`.
-- For each frame in the range:
-  1. Skip it if `_DONE` already exists in S3.
-  2. Otherwise render it to local scratch through the existing `Pipeline` (call `render_frame(idx)`; do not fork the pipeline).
-  3. Upload the frame dir, then write `_DONE`.
-  4. Delete the local frame dir.
-- On SIGTERM (Spot interruption), finish or abandon the current frame cleanly and exit non-zero, so Batch retries. Resumability comes from `_DONE`.
-- Stream logs to stdout (CloudWatch) and also upload `logs/shard_<k>.log` at the end.
-- **Required change to `synthrig`** (small and additive): make the dataset header deterministic, and let it be written separately from rendering:
-  - Add `Pipeline.write_header()`.
-  - Add a `--header-only` path in `run.py`.
-  - Move the wall-clock `created` field out of anything that shards compare.
-  - Add a `generator_env` block to `manifest.json`: Blender version, image digest, git sha, render device, instance type (from IMDSv2, or `local`).
-
-  `submit` writes the header once. Workers never write it.
-
-**Accept:** locally, `worker.py` with 2 shards and a `file://` or MinIO-style local target (or a real bucket) produces the same frame set as a single `run.py` run. Killing a worker mid-shard and re-running it completes only the missing frames.
-
-## Step 0.5: AWS Batch (scale-out)
-
-Terraform adds:
-- A managed EC2 compute environment: GPU instance types from config, Spot with `SPOT_PRICE_CAPACITY_OPTIMIZED` when `use_spot`, plus an On-Demand environment as the second-priority fallback.
-- min vCPU 0, max from config.
-- The ECS GPU-optimised AMI (Batch default for GPU).
-- A job queue.
-- A job definition: the container image by digest, 1 GPU, memory/vCPU sized for `g6.xlarge`, the job role, and up to 3 retry attempts on Spot interruption (`evaluateOnExit` for host-level exit reasons).
-
-CLI:
-```
-python infra/cloud.py submit --config configs/runs/app1_demo.yaml --frames 1000 --shards 50 [--scale ..] [--samples ..]
-      # writes header to S3, submits array job, prints run URI + job id
-python infra/cloud.py status <job-id|run-uri>   # shards done/failed, frames with _DONE, ETA
-python infra/cloud.py pull <run-uri> [--frames 0:10] --out out/<name>   # download (subset) for local eval
-python infra/cloud.py cost <run-uri>            # instance-hours from job records; no hard-coded prices
-```
-**Accept:**
-- A 4-shard × 2-frame job completes on Spot.
-- `status` shows 8/8 frames.
-- `pull` followed by `eval/preview.py` and `eval/dots_eval.py` works on the downloaded dataset.
-- The compute environment returns to 0 instances afterwards.
-
-## Step 0.6: docs + guardrails
-
-- `infra/README.md`: prerequisites (AWS CLI v2 with SSO, Docker, Terraform), first-time setup, the day-to-day commands, how to resume a failed run, and how to tear everything down.
-- `cloud.py` refuses to run if `infra/config.yaml` still has placeholders, or if the git working tree is dirty during `submit`. A `--allow-dirty` flag overrides the dirty-tree check, and the manifest then records it.
-- A CI job (GitHub Actions or equivalent) that builds the image and runs `image test` on every PR. Pushing to ECR from CI is optional and needs OIDC. Never store AWS keys in CI secrets.
+- **Docs:** `infra/README.md` covers setup, day-to-day commands, resuming, disk space and
+  cleanup.
+- **Guardrails:**
+  - `submit` refuses a dirty working tree, or an image that was not built from the
+    current clean commit. `--allow-dirty` overrides this and is recorded in
+    `generator_env`.
+  - `submit` and every worker frame refuse to run below `min_free_gb`.
+- **Status check:** `cloud.py status` reports the code, GPU, image (and whether it is
+  stale), disk space and dataset sizes, and running workers. `cloud.py disk` reports only
+  the volumes. `infra/ec2/check_ec2.sh` runs both, together with image build/test,
+  gpucheck and a demo render.
+- **CI:** `.github/workflows/ci.yml` builds the image and runs the tests and a CPU smoke
+  render on every PR. It uses no secrets and pushes nothing.
 
 ## Out of scope
-- Kubernetes/EKS, SageMaker, or a web UI.
-- Multi-region.
-- Deleting existing datasets from `cloud.py`. Deletes are manual on purpose.
+- S3, Terraform, ECR, AWS Batch, multi-instance scale-out, and idle auto-stop.
+- Kubernetes/EKS, SageMaker, a web UI, multi-region.
+- Deleting datasets from `cloud.py`. Deletes are manual on purpose.

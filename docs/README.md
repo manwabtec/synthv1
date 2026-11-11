@@ -2,6 +2,7 @@
 
 - [Infrastructure task](TASK_infra.md): canonical Phase 0 requirements and acceptance checks.
 - [Scene task](TASK_scenes.md): subsequent asset and environment phases.
+- [Status 2026-11-10](STATUS_2026-11-10.md): snapshot of implemented vs. outstanding work.
 - [Hardware provenance](datasheets/README.md): datasheet sources and parameter provenance.
 - [Reference documents](reference/README.md): retained reference snapshots, not authoritative specifications.
 - [Scene previews](previews/README.md): checked-in documentation images, not runtime output storage.

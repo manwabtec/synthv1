@@ -126,6 +126,12 @@ class BlenderBackend:
     def new_frame(self, rig: RigModel, cycles_seed: int = 0):
         """Fresh Blender scene with the rig built in. Scenes then add their content."""
         bpy.ops.wm.read_factory_settings(use_empty=True)
+        if self.s.device == "GPU":
+            # read_factory_settings also resets user preferences, including the Cycles
+            # compute device chosen in __init__; without this every frame renders on CPU.
+            from .devices import configure_gpu
+
+            configure_gpu()
         sc = bpy.context.scene
         sc.render.engine = "CYCLES"
         sc.cycles.device = self.s.device

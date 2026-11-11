@@ -29,7 +29,8 @@ def validate(data: dict[str, Any], kind: str, path: Path) -> None:
         config = RunConfig.model_validate(data)
         rig = Path(config.rig)
         if not rig.is_absolute():
-            rig = path.parent / rig
+            # Lexical normalisation: on Linux, "dir/../x" fails if dir does not exist yet.
+            rig = Path(os.path.normpath(path.parent / rig))
         Rig.model_validate(read_mapping(rig))
 
 

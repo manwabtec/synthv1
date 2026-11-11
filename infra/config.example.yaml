@@ -1,33 +1,19 @@
-# Copy to infra/config.yaml. That file is gitignored and is the only repository
-# file that may contain account-specific values. Never put credentials here.
-project: synthrig
-owner: "<budget-alert-email-or-team>"
-cost_center: "<required-tag-or-na>"
-aws_profile: "<aws-cli-sso-profile>"
-region: us-east-1
+# Optional. Copy to infra/config.yaml (gitignored) to override the defaults in
+# infra/cloud.py. Never put credentials here. Unknown keys and "<...>" placeholders
+# are rejected, so delete any line you do not fill in.
 
-# Leave null/empty to let Terraform create private networking. If your
-# organisation supplies a VPC, provide private subnets with S3/ECR/SSM/Logs
-# endpoints or NAT access.
-vpc_id: null
-subnet_ids: []
+# Without this file: data_root = $SYNTHRIG_DATA_ROOT or ../data, scratch_dir =
+# <data_root>/scratch, docker_root = what `docker info` reports (local workstation).
+# The values below are the EC2 instance's; infra/ec2/setup_host.sh writes them there.
+data_root: /app/synthrig      # persistent EBS volume: datasets/, previews/, logs/, diagnostics/
+scratch_dir: /scratch         # instance-store NVMe: render scratch, ERASED on stop/start
+docker_root: /app/docker      # Docker data-root (images); only used by `cloud.py disk`
+image: synthrig               # local Docker image name (tag :latest + :<git sha>)
+min_free_gb: 20               # renders refuse to start, and workers stop, below this
+max_parallel_shards: 2        # worker containers sharing the one GPU before a warning
 
-bucket: "<globally-unique-s3-bucket-name>"
-ecr_repo: synthrig
-dev_instance_type: g6.xlarge
-batch_instance_types:
-  - g6.xlarge
-  - g6.2xlarge
-  - g5.xlarge
-  - g5.2xlarge
-batch_max_vcpus: 64
-use_spot: true
-dev_idle_stop_minutes: 60
-monthly_budget_usd: 100
-
-# Organisation controls. Keep null/empty only when the AWS administrator
-# confirms they are not required.
-permission_boundary_arn: null
-kms_key_arn: null
-approved_gpu_ami_owners: [amazon]
-extra_tags: {}
+# Used only by `python -m infra.access.check <instance-id>` from a laptop.
+# region: us-east-1
+# aws_profile: default
+# instance_id: i-0123456789abcdef0
+# owner: team@example.com

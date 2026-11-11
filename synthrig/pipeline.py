@@ -4,7 +4,10 @@ from __future__ import annotations
 import datetime as _dt
 import importlib
 import json
+import os
+import platform
 import shutil
+import subprocess
 import time
 from pathlib import Path
 from typing import Any, Optional
@@ -29,7 +32,7 @@ class RenderCfg(_Strict):
     samples: int = 64
     filter_width: float = 1.5
     max_bounces: int = 4
-    device: str = "CPU"
+    device: str = "CPU"  # CPU, GPU (OptiX, else CUDA), OPTIX or CUDA
     threads: int = 0
     render_scale: float = 1.0  # <1 for fast previews: scales every camera's K and resolution
 
@@ -83,18 +86,63 @@ def _lum(rgb: np.ndarray, sensor) -> np.ndarray:
     return (rgb * np.asarray(sensor.rgb_response)).max(-1)
 
 
+GPU_BACKENDS = {"GPU": ("OPTIX", "CUDA"), "OPTIX": ("OPTIX",), "CUDA": ("CUDA",)}
+
+
+def generator_env(device: str) -> dict[str, Any]:
+    """What produced a dataset: software versions and host. Cloud-agnostic.
+
+    Callers (e.g. infra/) set SYNTHRIG_IMAGE_DIGEST and SYNTHRIG_INSTANCE_TYPE; without
+    them the values are "none" and "local".
+    """
+    import bpy
+
+    sha = os.environ.get("SYNTHRIG_GIT_SHA")
+    dirty = os.environ.get("SYNTHRIG_GIT_DIRTY")
+    if not sha or sha == "unknown":
+        root = Path(__file__).resolve().parents[1]
+        try:
+            sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True,
+                                 text=True, check=True).stdout.strip()
+            dirty = str(bool(subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"],
+                                            cwd=root, capture_output=True, text=True).stdout.strip())).lower()
+        except (OSError, subprocess.CalledProcessError):
+            sha = "unknown"
+    return {
+        "blender_version": bpy.app.version_string,
+        "python_version": platform.python_version(),
+        "git_sha": sha,
+        "git_dirty": dirty or "unknown",
+        "allow_dirty": os.environ.get("SYNTHRIG_ALLOW_DIRTY", "false"),
+        "image_digest": os.environ.get("SYNTHRIG_IMAGE_DIGEST", "none"),
+        "render_device": device,
+        "instance_type": os.environ.get("SYNTHRIG_INSTANCE_TYPE", "local"),
+    }
+
+
 class Pipeline:
-    def __init__(self, cfg: RunConfig, log=print):
+    def __init__(self, cfg: RunConfig, log=print, write_header: bool = True):
+        """Set up the rig and renderer for `cfg`.
+
+        write_header=False skips writing manifest/rig/calib, for shard workers that render
+        frames into a dataset whose header was written once by `write_header()`.
+        """
         # bpy imported lazily so rig/sensor/dataset stay importable without Blender
+        from .render import devices
         from .render.blender_backend import BlenderBackend, RenderSettings
 
+        if cfg.render.device not in ("CPU", *GPU_BACKENDS):
+            raise ValueError(f"render.device must be CPU, GPU, OPTIX or CUDA, not {cfg.render.device!r}")
+        if cfg.render.device in GPU_BACKENDS:
+            devices.DEFAULT_BACKENDS = GPU_BACKENDS[cfg.render.device]
         self.cfg = cfg
         self.log = log
         self.rig_spec = load_rig(cfg.rig)
         self.rig = RigModel.build(self.rig_spec, cfg.render.render_scale)
         r = cfg.render
         self.backend = BlenderBackend(RenderSettings(samples=r.samples, filter_width=r.filter_width,
-                                                     max_bounces=r.max_bounces, device=r.device,
+                                                     max_bounces=r.max_bounces,
+                                                     device="CPU" if r.device == "CPU" else "GPU",
                                                      threads=r.threads))
         self.scene = load_scene(cfg.scene, cfg.scene_params)
         self.out = output_path(cfg.output)
@@ -104,10 +152,16 @@ class Pipeline:
                           for n, s in self.rig.stereo.items()}
         log(f"[synthrig] rig {self.rig_spec.name} ({self.rig_spec.hash()}), scale {self.rig.scale}, "
             f"render plans in {time.time() - t:.1f}s")
-        self._write_header()
+        if write_header:
+            self.write_header()
 
     # ---------------------------------------------------------------- dataset header
-    def _write_header(self):
+    def write_header(self, extra_env: dict[str, Any] | None = None):
+        """Write manifest.json, rig.yaml and calib/ (once per dataset, before any frame).
+
+        Apart from the wall-clock `created`, the header depends only on the run config and
+        the software in `generator_env`, so it is identical whoever writes it.
+        """
         out = self.out
         (out / "calib").mkdir(parents=True, exist_ok=True)
         (out / "frames").mkdir(exist_ok=True)
@@ -121,6 +175,7 @@ class Pipeline:
             "stereo": {n: {"left": s.left, "right": s.right} for n, s in rig.stereo.items()},
             "scene": self.cfg.scene, "run_config": self.cfg.model_dump(mode="json"),
             "units": {"length": "m", "disparity": "px", "depth": "planar z along optical axis"},
+            "generator_env": {**generator_env(self.cfg.render.device), **(extra_env or {})},
         }
         (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
         (out / "rig.yaml").write_text(yaml.safe_dump(rig.spec.model_dump(mode="json"), sort_keys=False))

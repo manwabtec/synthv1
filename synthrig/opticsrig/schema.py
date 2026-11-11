@@ -70,13 +70,21 @@ class Intrinsics(_Strict):
 
     @model_validator(mode="after")
     def _focal(self):
-        given = [k for k in ("fx", "focal_length_mm", "hfov_deg") if getattr(self, k) is not None]
-        if len(given) != 1:
-            raise ValueError(f"intrinsics: give exactly one of fx (px), focal_length_mm, hfov_deg (got {given})")
+        # Each given input implies fx; several may be given (a validated dump holds the
+        # derived fx too) but they must agree.
+        implied = {}
+        if self.fx is not None:
+            implied["fx"] = self.fx
         if self.focal_length_mm is not None:
-            self.fx = self.focal_length_mm * 1000.0 / self.pixel_size_um
-        elif self.hfov_deg is not None:
-            self.fx = (self.width / 2.0) / math.tan(math.radians(self.hfov_deg) / 2.0)
+            implied["focal_length_mm"] = self.focal_length_mm * 1000.0 / self.pixel_size_um
+        if self.hfov_deg is not None:
+            implied["hfov_deg"] = (self.width / 2.0) / math.tan(math.radians(self.hfov_deg) / 2.0)
+        if not implied:
+            raise ValueError("intrinsics: give fx (px), focal_length_mm or hfov_deg")
+        values = list(implied.values())
+        if max(values) - min(values) > 1e-6 * max(values):
+            raise ValueError(f"intrinsics: {', '.join(implied)} disagree (fx = {values})")
+        self.fx = values[0]
         if self.fy is None:
             self.fy = self.fx
         if self.cx is None:

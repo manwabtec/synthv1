@@ -15,6 +15,7 @@ Everything that needs Blender runs inside the Docker image.
   python3 infra/cloud.py stop datasets/<scene>/<rig_hash>/<run_id>
   python3 infra/cloud.py resume datasets/<scene>/<rig_hash>/<run_id>
   python3 infra/cloud.py exec -- python -m synthrig ...   # any command inside the container
+  python3 infra/cloud.py gui                    # browser GUI on http://localhost:8501
 """
 from __future__ import annotations
 
@@ -160,7 +161,8 @@ def image_info(config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
 
 def container(config: Dict[str, Any], args: Sequence[str], *, gpu: bool = True, name: Optional[str] = None,
               labels: Optional[Dict[str, str]] = None, env: Optional[Dict[str, str]] = None,
-              mount_code: bool = False, detach: bool = False, interactive: bool = False) -> List[str]:
+              mount_code: bool = False, detach: bool = False, interactive: bool = False,
+              ports: Sequence[str] = ()) -> List[str]:
     """`docker run` command line with the data root and scratch mounted, as this user."""
     cmd = [*docker(), "run"]
     cmd += ["-d", "--restart", "on-failure:3"] if detach else ["--rm"]
@@ -170,6 +172,8 @@ def container(config: Dict[str, Any], args: Sequence[str], *, gpu: bool = True, 
         cmd += ["--gpus", "all"]
     if name:
         cmd += ["--name", name]
+    for port in ports:
+        cmd += ["-p", port]
     for k, v in (labels or {}).items():
         cmd += ["--label", f"{k}={v}"]
     for path in (config["data_root"], config["scratch_dir"]):
@@ -363,6 +367,18 @@ def cmd_exec(a: argparse.Namespace) -> int:
                          interactive=sys.stdin.isatty()), check=False).returncode
 
 
+def cmd_gui(a: argparse.Namespace) -> int:
+    """Browser GUI (tools/gui/app.py) in the image, with the GPU and the working tree mounted
+    so layout edits are saved into this checkout. Listens on 127.0.0.1 only."""
+    config = load_config()
+    print(f"GUI: open http://localhost:{a.port}  (on EC2, VS Code forwards the port; Ctrl+C stops)")
+    cmd = ["streamlit", "run", "tools/gui/app.py", "--server.address", "0.0.0.0",
+           "--server.port", "8501", "--server.headless", "true", "--browser.gatherUsageStats", "false"]
+    return run(container(config, cmd, gpu=not a.no_gpu, name="synthrig-gui", mount_code=True,
+                         interactive=sys.stdin.isatty(), ports=[f"127.0.0.1:{a.port}:8501"]),
+               check=False).returncode
+
+
 def cmd_submit(a: argparse.Namespace) -> int:
     config = load_config()
     g = git_state()
@@ -486,6 +502,10 @@ def parser() -> argparse.ArgumentParser:
     e.add_argument("--mount-code", action="store_true", help="use the working tree instead of the image's code")
     e.add_argument("command", nargs=argparse.REMAINDER)
     e.set_defaults(func=cmd_exec)
+    gu = sub.add_parser("gui", help="browser GUI: layout editor, renders, 3D view (http://localhost:8501)")
+    gu.add_argument("--port", type=int, default=8501)
+    gu.add_argument("--no-gpu", action="store_true")
+    gu.set_defaults(func=cmd_gui)
     sm = sub.add_parser("submit", help="write a run header and start one worker container per shard")
     sm.add_argument("--config", required=True)
     sm.add_argument("--frames", type=int, required=True)

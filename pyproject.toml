@@ -1,12 +1,13 @@
 [project]
 name = "synthrig"
 version = "0.1.0"
-description = "Synthetic multi-camera + dot-laser rig renderer (Blender Cycles) with exact GT"
+description = "Synthetic multi-camera + laser (dot/line) rig renderer (Blender Cycles) with exact GT"
 requires-python = ">=3.11,<3.12"
 dependencies = ["numpy", "opencv-python>=4.8,<5", "pydantic>=2", "pyyaml", "scipy", "OpenEXR>=3.3", "boto3"]
 
 [project.optional-dependencies]
 render = ["bpy==4.2.0"]   # Blender as a Python module (needs Python 3.11); or run inside Blender
+gui = ["streamlit>=1.40,<2", "plotly>=5.24,<7", "ruamel.yaml>=0.18,<0.19"]   # tools/gui (browser app)
 
 [dependency-groups]
 dev = ["pytest"]

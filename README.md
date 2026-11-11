@@ -56,6 +56,27 @@ CPU timing), a 2-frame GPU demo render with preview, and `cloud.py status`. Each
 prints PASS/FAIL/SKIP and the script exits non-zero if any step fails. Logs go to
 `<data_root>/logs/check/<time>_<commit>/`; read `summary.txt` first.
 
+## GUI: layout editor, renders, 3D view
+
+```bash
+python3 infra/cloud.py gui      # then open http://localhost:8501 (VS Code forwards it from EC2)
+```
+
+A browser app running in the Docker image (GPU included), for `wheel_rail`-type runs:
+
+- **Layout**: edit the wheel (profile, position along the rail, rotation, lateral shift, as a
+  fixed value or a random range), each camera (position, aim point, horizontal field of
+  view) and each laser (position, aim point, line or dot pattern, fan angle, power). "Aim
+  at" snaps an aim point to a named point (tread contact, flange tip, rail head, wheel
+  centre). The 3D layout and the per-camera views update immediately; valid edits are saved
+  into the rig and scene YAML files with comments kept (switch off in the sidebar).
+- **Render & images**: render N frames of the run (scale, samples, device), watch progress,
+  then browse each camera's image, laser masks, depth and segmentation.
+- **3D view**: a Blender render of the whole scene from a free viewpoint with markers for
+  the cameras and lasers, showing where the laser line and dots actually land.
+
+Renders and 3D views are stored under `<data_root>/gui/<run>/`.
+
 ## Quickstart on a workstation (uv)
 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/). Run commands

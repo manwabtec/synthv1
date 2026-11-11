@@ -76,6 +76,7 @@ python3 infra/cloud.py status --run datasets/<scene>/<rig_hash>/<run_id>
 python3 infra/cloud.py stop   datasets/<scene>/<rig_hash>/<run_id>   # graceful; done frames are kept
 python3 infra/cloud.py resume datasets/<scene>/<rig_hash>/<run_id>   # renders only the missing frames
 
+python3 infra/cloud.py gui                       # browser GUI on http://localhost:8501
 python3 infra/cloud.py exec -- python eval/dots_eval.py /data/datasets/<...>   # any command in the image
 python3 infra/cloud.py exec --mount-code -- pytest -q                           # test uncommitted code
 ```

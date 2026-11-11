@@ -19,6 +19,8 @@ def test_eval_and_host_tools_do_not_load_blender():
             "for f in ['eval/preview.py', 'eval/dots_eval.py', 'eval/stereo_eval.py']:\n"
             "    runpy.run_path(f, run_name='not_main')\n"
             "import infra.cloud, infra.worker, infra.storage.disk\n"
+            "import synthrig.layout, synthrig.sampling, synthrig.assets.wheelrail, synthrig.assets.classes\n"
+            "try:\n    import tools.gui.figures, tools.gui.configio\nexcept ModuleNotFoundError:\n    pass\n"
             "assert 'bpy' not in sys.modules, 'bpy loaded'")
     result = subprocess.run([sys.executable, "-c", code], cwd=CODE_ROOT, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr

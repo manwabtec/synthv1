@@ -15,14 +15,24 @@ cameras:
     intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 30}
     distortion: [-0.05, 0.02, 0.0, 0.0, 0.0]
     pose: {position: [-0.06, -1.45, 0.30], look_at: [0.0, -0.75, 0.05]}
-    sensor: {mono: true, bit_depth: 12, full_well_e: 10000, read_noise_e: 3.0, exposure: 1.0,
-             bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}}
+    sensor:
+      mono: true
+      bit_depth: 12
+      full_well_e: 10000
+      read_noise_e: 3.0
+      exposure: 1.0
+      bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}
   - name: cam1                      # stereo right
     intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 30}
     distortion: [-0.05, 0.02, 0.0, 0.0, 0.0]
     pose: {position: [0.06, -1.45, 0.30], look_at: [0.0, -0.75, 0.05]}
-    sensor: {mono: true, bit_depth: 12, full_well_e: 10000, read_noise_e: 3.0, exposure: 1.0,
-             bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}}
+    sensor:
+      mono: true
+      bit_depth: 12
+      full_well_e: 10000
+      read_noise_e: 3.0
+      exposure: 1.0
+      bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}
   - name: cam2                      # side camera, upstream
     intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 40}
     distortion: [-0.10, 0.04, 0.0, 0.0, 0.0]

@@ -19,8 +19,12 @@ RIG = CODE_ROOT / "configs/opticsrigs/wheel_rail_v1.yaml"
 def test_hfov_sets_focal_length():
     i = Intrinsics(width=2000, height=1000, pixel_size_um=5, hfov_deg=90)
     assert i.fx == pytest.approx(1000.0)
-    with pytest.raises(ValueError, match="exactly one"):
+    with pytest.raises(ValueError, match="disagree"):
         Intrinsics(width=2000, height=1000, pixel_size_um=5, hfov_deg=90, focal_length_mm=8)
+    again = Intrinsics.model_validate(i.model_dump())  # a validated dump (fx + hfov) re-validates
+    assert again.fx == pytest.approx(i.fx)
+    rig = load_rig(RIG)
+    assert Rig.model_validate(rig.model_dump()).hash() == rig.hash()
 
 
 def test_grid_fan_angle_spans_outer_dots():

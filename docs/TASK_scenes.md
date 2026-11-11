@@ -31,6 +31,10 @@ Prerequisite: `docs/TASK_infra.md` (Phase 0) is complete. Follow `AGENTS.md`. Do
 **Progress:** Phase 1 done except sequence mode. Phase 2: profiles, wheel (split into
 tread/flange/rim face/plate/hub), rails, ties, tie plates, ballast. Phase 3: `wheel_rail`
 scene with `configs/opticsrigs/wheel_rail_v1.yaml` (example layout).
+Phase 5 (GUI): `tools/gui/app.py` (`python3 infra/cloud.py gui`) with the Layout,
+Render & images and 3D view tabs; layout geometry in `synthrig/layout.py` (no bpy), 3D
+overview renderer in `synthrig/render/observer.py`. Still open: sequence mode, wheelset
+(both wheels + axle), the other three scenes, Phase 4 per-scene validation tests.
 
 ---
 

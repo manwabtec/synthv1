@@ -21,9 +21,9 @@ ENV UV_PYTHON_INSTALL_DIR=/opt/python \
     UV_NO_PROGRESS=1
 WORKDIR /src
 COPY pyproject.toml uv.lock ./
-# Locked deps + Blender (render extra) + pytest (dev group). The project itself is
+# Locked deps + Blender (render extra) + GUI (gui extra) + pytest (dev group). The project itself is
 # not installed; /code is put on PYTHONPATH in the runtime stage.
-RUN uv sync --frozen --extra render --no-install-project
+RUN uv sync --frozen --extra render --extra gui --no-install-project
 
 # ---------------------------------------------------------------- runtime stage
 FROM ${CUDA_BASE}

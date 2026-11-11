@@ -137,6 +137,18 @@ class StereoPair(_Strict):
     alpha: float = 0.0
 
 
+class Rod(_Strict):
+    """Cameras mounted together on one bar (layout/GUI grouping only; no image outputs).
+
+    A rod does not imply rectified stereo: use stereo_pairs for that. In track-frame rigs
+    the GUI moves a rod's cameras together along its axis (default: along the rail, x).
+    """
+
+    name: str
+    cameras: list[str] = Field(..., min_length=1)
+    axis: list[float] = Field([1.0, 0.0, 0.0], min_length=3, max_length=3)
+
+
 # --------------------------------------------------------------------------- lasers
 class GridPattern(_Strict):
     """Regular dot grid. Give the angular pitch between dots OR the full fan angle."""
@@ -228,6 +240,7 @@ class Rig(_Strict):
     frame: Literal["rig", "track"] = "rig"
     cameras: list[Camera]
     stereo_pairs: list[StereoPair] = []
+    rods: list[Rod] = []
     lasers: list[Laser] = []
     lights: list[Light] = []
 
@@ -248,6 +261,10 @@ class Rig(_Strict):
             R = self.camera(p.right).intrinsics
             if (L.width, L.height) != (R.width, R.height):
                 raise ValueError(f"stereo pair {p.name}: cameras must share resolution")
+        for rod in self.rods:
+            for n in rod.cameras:
+                if n not in names:
+                    raise ValueError(f"rod {rod.name}: unknown camera {n}")
         lnames = [l.name for l in self.lasers]
         if len(set(lnames)) != len(lnames):
             raise ValueError("laser names must be unique")

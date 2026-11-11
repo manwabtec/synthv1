@@ -21,7 +21,7 @@ from synthrig.paths import CODE_ROOT  # noqa: E402
 pytestmark = pytest.mark.slow
 SCENES = {  # scene -> (min visible GT dots/line samples in cam0, params model)
     "wheel_rail": (300, WheelRailParams),
-    "wheel_tread": (300, WheelRailParams),
+    "wheel_tread": (60, WheelRailParams),  # cam0 sees the field-side dots only
 }
 
 
@@ -87,6 +87,8 @@ def test_gt_disparity_matches_dot_pairs(rendered, scene):
     so the expected error at a dot is <= 0.5 x zoom x local disparity gradient. Check that
     bound for 95% of dots (the rest lie on occlusion edges)."""
     ds, fr = _frame(rendered[scene])
+    if not ds.manifest["stereo"]:
+        pytest.skip(f"{scene} has no stereo pairs")
     for pair, lr in ds.manifest["stereo"].items():
         zoom = ds.stereo_calib[pair]["P1"][0, 0] / ds.cameras[lr["left"]]["K"][0, 0]
         d, grad = disparity_at_dots(fr, pair, lr["left"], lr["right"], with_gradient=True)

@@ -1,20 +1,24 @@
 # wheel_tread layout, devices in the TRACK frame (x along track, y left, z up, metres).
-# The wheel stands on the right rail (y < 0) at x = 0. Everything sits low on the field
-# side, ahead of the wheel (x > 0), looking back at the tread 45 deg ahead of the contact
-# point: tread target [0.323, -0.746, 0.134]. Rail occupies |y| 0.68..0.83 near z <= 0,
-# so devices stay at y <= -0.9. Example layout, not a design: edit freely (or in the GUI).
-name: wheel_tread_v1
+# The wheel stands on the right rail (y < 0) at x = 0; rail top is z = 0.
+# Two camera rods run parallel to the rail (along x), just above rail-top height, ahead
+# of the wheel, looking up at the tread 2.5 in (64 mm) above the rail (x = 0.232):
+#   field side (outside the rail, rim side):  cam0/cam1 on y = -0.95, green dot laser above
+#   gauge side (inside the rail, flange side): cam2/cam3 on y = -0.55, red line laser above
+# The rod length is the camera spacing; edit it with the GUI's rod sliders.
+# Example layout, not a design.
+name: wheel_tread_rods_v1
 version: 1
 frame: track
 description: >
-  Example: mono stereo pair (5 cm half-baseline, horizontal) and two colour cameras ahead of
-  and behind the wheel, a line laser drawing a tread/flange profile, a dot-pattern laser.
+  Two camera rods (field side and gauge side) just above rail height ahead of the wheel,
+  all four cameras looking up at the same tread region 64 mm above the rail; a green dot
+  laser above the field rod, a red line laser above the gauge rod.
 
 cameras:
-  - name: cam0                      # stereo left
-    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 24}
+  - name: cam0                      # field rod, near end
+    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 30}
     distortion: [-0.05, 0.02, 0.0, 0.0, 0.0]
-    pose: {position: [0.7285, -0.9951, 0.02], look_at: [0.3233, -0.7462, 0.1339]}
+    pose: {position: [0.35, -0.95, 0.01], look_at: [0.2324, -0.7462, 0.0635]}
     sensor:
       mono: true
       bit_depth: 12
@@ -22,10 +26,10 @@ cameras:
       read_noise_e: 3.0
       exposure: 1.0
       bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}
-  - name: cam1                      # stereo right
-    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 24}
+  - name: cam1                      # field rod, far end
+    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 30}
     distortion: [-0.05, 0.02, 0.0, 0.0, 0.0]
-    pose: {position: [0.7715, -0.9049, 0.02], look_at: [0.3233, -0.7462, 0.1339]}
+    pose: {position: [0.65, -0.95, 0.01], look_at: [0.2324, -0.7462, 0.0635]}
     sensor:
       mono: true
       bit_depth: 12
@@ -33,37 +37,59 @@ cameras:
       read_noise_e: 3.0
       exposure: 1.0
       bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}
-  - name: cam2                      # colour, ahead and higher
+  - name: cam2                      # gauge rod, far end
     intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 30}
-    distortion: [-0.08, 0.03, 0.0, 0.0, 0.0]
-    pose: {position: [0.80, -1.15, 0.25], look_at: [0.3233, -0.7462, 0.1339]}
-    sensor: {mono: false, bayer: RGGB, rgb_response: [1.0, 1.0, 1.0], bit_depth: 12, exposure: 1.0}
-  - name: cam3                      # colour, behind the wheel (mirror of the stereo pair)
+    distortion: [-0.05, 0.02, 0.0, 0.0, 0.0]
+    pose: {position: [0.65, -0.55, 0.01], look_at: [0.2324, -0.705, 0.0635]}
+    sensor:
+      mono: true
+      bit_depth: 12
+      full_well_e: 10000
+      read_noise_e: 3.0
+      exposure: 1.0
+      bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}
+  - name: cam3                      # gauge rod, near end
     intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 30}
-    distortion: [-0.08, 0.03, 0.0, 0.0, 0.0]
-    pose: {position: [-0.75, -0.95, 0.02], look_at: [-0.3233, -0.7462, 0.1339]}
-    sensor: {mono: false, bayer: RGGB, rgb_response: [1.0, 1.0, 1.0], bit_depth: 12, exposure: 1.0}
+    distortion: [-0.05, 0.02, 0.0, 0.0, 0.0]
+    pose: {position: [0.35, -0.55, 0.01], look_at: [0.2324, -0.705, 0.0635]}
+    sensor:
+      mono: true
+      bit_depth: 12
+      full_well_e: 10000
+      read_noise_e: 3.0
+      exposure: 1.0
+      bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}
 
-stereo_pairs:
-  - {name: front, left: cam0, right: cam1, alpha: 0.0}
+# Rods: cameras on one bar along the rail (the GUI's rod sliders move them together).
+# No stereo_pairs: with the cameras spread along the rail and converging on one nearby
+# spot, the baseline runs almost along a line of sight, so standard rectification is
+# ill-conditioned. Add pairs only for side-by-side cameras.
+rods:
+  - {name: field, cameras: [cam0, cam1]}
+  - {name: gauge, cameras: [cam2, cam3]}
 
 lasers:
-  - name: red_line                  # light sheet across the tread: a tread/flange profile line
+  - name: green_dots                # field side, above the field rod
+    wavelength_nm: 520
+    pose: {position: [0.50, -0.95, 0.15], look_at: [0.2324, -0.7462, 0.0635]}
+    pattern: {type: grid, rows: 11, cols: 15, fan_deg: [14, 10]}
+    power_w: 100
+    dot_sigma_mrad: 0.5
+  - name: red_line                  # gauge side, above the gauge rod
     wavelength_nm: 650
-    pose: {position: [0.62, -0.95, -0.02], look_at: [0.3233, -0.7462, 0.1339]}
+    pose: {position: [0.50, -0.55, 0.15], look_at: [0.2324, -0.705, 0.0635]}
     pattern: {type: line, fan_deg: 30, angle_deg: 0}
     power_w: 150
     dot_sigma_mrad: 0.5
-  - name: green_dots
-    wavelength_nm: 520
-    pose: {position: [0.75, -1.05, 0.12], look_at: [0.3233, -0.7462, 0.1339]}
-    pattern: {type: grid, rows: 11, cols: 15, fan_deg: [14, 10]}
-    power_w: 120
-    dot_sigma_mrad: 0.5
 
 lights:
-  - name: strobe
+  - name: strobe_field
     type: area
-    pose: {position: [0.85, -1.05, 0.10], look_at: [0.3233, -0.7462, 0.1339]}
-    power_w: 2
-    size_m: 0.15
+    pose: {position: [0.50, -1.00, 0.08], look_at: [0.2324, -0.7462, 0.0635]}
+    power_w: 1.5
+    size_m: 0.12
+  - name: strobe_gauge
+    type: area
+    pose: {position: [0.50, -0.50, 0.08], look_at: [0.2324, -0.705, 0.0635]}
+    power_w: 1.5
+    size_m: 0.12

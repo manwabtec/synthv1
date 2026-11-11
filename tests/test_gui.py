@@ -8,7 +8,7 @@ from streamlit.testing.v1 import AppTest  # noqa: E402
 
 from synthrig.paths import CODE_ROOT  # noqa: E402
 
-CONFIGS = [CODE_ROOT / "configs/wheel_rail/rig.yaml", CODE_ROOT / "configs/wheel_rail/scene.yaml"]
+CONFIGS = [CODE_ROOT / f"configs/{scene}/{f}.yaml" for scene in ("wheel_rail", "wheel_tread") for f in ("rig", "scene")]
 
 
 def test_app_opens_without_errors_or_file_changes():
@@ -20,7 +20,9 @@ def test_app_opens_without_errors_or_file_changes():
 
     # edit with saving switched off: the layout recomputes, files stay untouched
     [t for t in at.toggle if t.label.startswith("Save edits")][0].set_value(False).run()
-    x = [n for n in at.number_input if n.label == "value"][0]
+    x = [n for n in at.slider if n.label == "value"][0]  # wheel x
     x.set_value(0.25).run()
+    rod = [n for n in at.slider if n.label.startswith("Rod length")][0]
+    rod.set_value(0.4).run()
     assert not at.exception, at.exception
     assert [p.read_bytes() for p in CONFIGS] == before

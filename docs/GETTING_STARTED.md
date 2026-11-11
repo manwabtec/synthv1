@@ -35,20 +35,31 @@ In the sidebar, pick the scene: **wheel_rail** (whole wheel on the rail) or
 
 ## 3. Layout tab: move things and see the effect immediately
 
+Everything is a slider; changes apply when you release it.
+
 - **Wheel**: position along the rail, rotation, lateral shift. "fixed" = one value,
   "random range" = a new value every rendered frame.
-- **Cameras** (open each one): position x/y/z, aim point x/y/z, field of view.
+- **Rods** (one per side of the rail): move a rod's cameras together. Rod centre x/y/z,
+  rod length (camera spacing along the rail), shared aim point, roll and field of view.
   "Aim at" snaps the aim point to the tread contact, flange tip, rail head or wheel centre.
-- **Lasers**: position, aim point, pattern (line or dots), fan angle, power.
+- **Individual cameras**: fine-tune one camera (position, aim point, roll, field of view).
+- **Lasers**: position, aim point, pattern (line or dots), fan angle, line orientation, power.
 
 Coordinates are metres in the track frame: **x** along the track, **y** sideways
-(+ = towards the left rail; the wheel is on the right rail at about y = -0.75),
-**z** up (0 = top of rail).
+(+ = towards the left rail; the wheel is on the right rail at about y = -0.75; the field
+side, outside the rail, is y < -0.79, the gauge side, inside, is y > -0.72), **z** up
+(0 = top of rail).
 
 The 3D view (drag to rotate, scroll to zoom) and the small camera views below it update
-straight away. The camera views show what each camera roughly sees and the percentage of
-each laser that lands in its image. Edits are saved into `configs/<scene>/rig.yaml` and
-`scene.yaml` (switch "Save edits" off in the sidebar to just experiment).
+straight away. The **inset in the top right of the 3D view** shows the wheel profile and
+which part of it each camera set sees in the section the cameras aim at: blue = outside
+the rail (field side), orange = inside (gauge side); thick = seen by both cameras of the
+set, thin = by only one; the percentages are of the whole profile. Occlusion by the
+flange is included.
+
+The camera views show what each camera roughly sees and the percentage of each laser that
+lands in its image. Edits are saved into `configs/<scene>/rig.yaml` and `scene.yaml`
+(switch "Save edits" off in the sidebar to just experiment).
 
 ## 4. Render & images tab
 

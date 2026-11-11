@@ -1,5 +1,6 @@
 # Documentation
 
+- [Getting started](GETTING_STARTED.md): short steps to open the GUI, move cameras/lasers/wheel and render.
 - [Infrastructure task](TASK_infra.md): canonical Phase 0 requirements and acceptance checks.
 - [Scene task](TASK_scenes.md): subsequent asset and environment phases.
 - [Status snapshots](status/): dated summaries of implemented vs. outstanding work.

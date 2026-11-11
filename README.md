@@ -1,7 +1,7 @@
 # synthrig: synthetic images for a fixed multi-camera + laser-dot rig
 
-Task specifications, reference snapshots and retained previews are listed in the
-[documentation index](docs/README.md).
+New here? Start with [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md). Task specifications
+and retained previews are listed in the [documentation index](docs/README.md).
 
 A 4-camera rig (cam0 and cam1 form a stereo pair) with two configurable dot-pattern lasers (red and green), rendered with Blender Cycles. The rig is defined entirely in a YAML file. Each application is a separate scene plugin. Evaluation reads only the dataset on disk.
 

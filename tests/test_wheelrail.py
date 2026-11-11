@@ -13,7 +13,7 @@ from synthrig.opticsrig.schema import GridPattern, Intrinsics, LinePattern, Rig
 from synthrig.paths import CODE_ROOT
 from synthrig.sampling import sample_config
 
-RIG = CODE_ROOT / "configs/opticsrigs/wheel_rail_v1.yaml"
+RIG = CODE_ROOT / "configs/wheel_rail/rig.yaml"
 
 
 def test_hfov_sets_focal_length():
@@ -48,7 +48,7 @@ def test_track_frame_rig_uses_z_up():
     R = model.cameras["cam0"].T_rig_cam[:3, :3]
     assert R[2, 1] < 0  # camera y (image down) points down in the world
     assert np.allclose(model.cameras["cam0"].T_rig_cam[:3, 3], [-0.06, -1.45, 0.30])
-    demo = Rig.model_validate(yaml.safe_load((CODE_ROOT / "configs/opticsrigs/demo_4cam_2laser.yaml").read_text()))
+    demo = Rig.model_validate(yaml.safe_load((CODE_ROOT / "configs/debug_clutter/rig.yaml").read_text()))
     assert demo.frame == "rig" and demo.cameras[0].pose.up == [0.0, -1.0, 0.0]
 
 
@@ -84,7 +84,7 @@ def test_registered_scene_params_roundtrip_and_repeat():
     pytest.importorskip("bpy")
     from synthrig.pipeline import RunConfig, load_scene
 
-    cfg = RunConfig.load(CODE_ROOT / "configs/runs/wheel_rail.yaml")
+    cfg = RunConfig.load(CODE_ROOT / "configs/wheel_rail/run.yaml")
     scene = load_scene(cfg.scene, cfg.scene_params, cfg.scene_config)
     p1 = scene.params(np.random.default_rng([cfg.seed, 5]))
     p2 = scene.params(np.random.default_rng([cfg.seed, 5]))

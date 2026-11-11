@@ -7,7 +7,7 @@
    DETECTED centroids with the dataset calibration and compare to GT 3D (mm).
    Run with --perturbed to use calib/perturbed/ and see calibration sensitivity.
 
-  python eval/dots_eval.py out/app1_demo [--perturbed] [--json results.json]
+  python eval/dots_eval.py datasets/debug_clutter [--perturbed] [--json results.json]
 """
 import argparse
 import json

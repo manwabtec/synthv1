@@ -4,7 +4,7 @@
 Container entrypoint (see infra/docker/entrypoint.sh); `cloud.py submit` starts one
 worker container per shard:
 
-  worker.py --config configs/runs/<x>.yaml --run-dir /data/datasets/<scene>/<rig_hash>/<run_id>
+  worker.py --config configs/<scene>/run.yaml --run-dir /data/datasets/<scene>/<rig_hash>/<run_id>
             --shard-index K --num-shards N --frames-total F
             [--scale s] [--samples n] [--device OPTIX|CUDA|GPU|CPU] [--scratch /scratch]
 
@@ -36,7 +36,7 @@ from typing import Callable, Iterable, Sequence
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from infra.storage.disk import check_free  # noqa: E402
+from infra.disk import check_free  # noqa: E402
 
 DONE = "_DONE"
 EXIT_INTERRUPTED = 143

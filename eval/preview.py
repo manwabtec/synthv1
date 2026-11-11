@@ -2,7 +2,7 @@
 """Contact sheet for one frame: every camera image with GT dots overlaid, laser masks,
 rectified stereo pair and GT disparity.  Reads the dataset only.
 
-  python eval/preview.py out/app1_demo --frame 0 --out preview.png
+  python eval/preview.py datasets/debug_clutter --frame 0 --out preview.png
 """
 import argparse
 import sys

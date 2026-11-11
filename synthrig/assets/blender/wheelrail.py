@@ -6,9 +6,9 @@ import bpy
 import mathutils
 import numpy as np
 
-from ..render.materials import principled
-from ..render.scene_api import SceneContext
-from .wheelrail import (WheelRailParams, ballast_level, rail_sections, revolve, tie_plates, ties,
+from .materials import principled
+from ...render.scene_api import SceneContext
+from ..wheelrail import (WheelRailParams, ballast_level, rail_sections, revolve, tie_plates, ties,
                         wheel_sections, wheel_to_track)
 
 

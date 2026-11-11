@@ -2,12 +2,12 @@
 
 Parameters: synthrig.assets.wheelrail.WheelRailParams (wheel position along the track,
 rotation, lateral shift, profiles, track and appearance). Values and sampling ranges come
-from the scene config (configs/scenes/wheel_rail.yaml). Use a `frame: track` rig: the
+from the scene config (configs/wheel_rail/scene.yaml). Use a `frame: track` rig: the
 devices are placed in the track frame, so this scene never moves the rig.
 """
 from __future__ import annotations
 
-from synthrig.assets.blender_wheelrail import build_track, build_wheel
+from synthrig.assets.blender.wheelrail import build_track, build_wheel
 from synthrig.assets.wheelrail import WheelRailParams
 from synthrig.render.scene_api import Scene, SceneContext, register_scene
 

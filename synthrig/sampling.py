@@ -1,6 +1,6 @@
 """Scene-config sampling: fixed values and randomisation ranges in YAML. No bpy.
 
-A scene config (configs/scenes/<scene>.yaml) maps parameter names to either a fixed value
+A scene config (configs/<scene>/scene.yaml) maps parameter names to either a fixed value
 or one sampling spec:
 
     wheel_x_m: 0.0                      # fixed

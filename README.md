@@ -15,11 +15,14 @@ scene ────┘   pinhole canvas      noise, bloom,    disparity,       (f
 | Package | Knows about | Imports bpy? |
 |---|---|---|
 | `synthrig/opticsrig` | schema, camera/laser models, transforms, calibration export | no |
-| `synthrig/render` | Blender backend, the scene API, materials | **yes** |
+| `synthrig/render` | Blender backend, the scene API, the 3D overview renderer | **yes** |
+| `synthrig/assets` | profiles, class taxonomy, track-frame wheel/rail geometry | no |
+| `synthrig/assets/blender` | Blender builders and materials for the assets | **yes** |
+| `synthrig/layout.py`, `synthrig/sampling.py` | GUI layout geometry, scene-config sampling | no |
 | `synthrig/sensor` | post-render camera model | no |
 | `synthrig/stereo.py` | rectification, exact GT disparity | no |
 | `synthrig/dataset` | on-disk format: writer helpers and reader | no |
-| `scenes/app1`, `scenes/app2` | one application each: geometry, materials, randomisation | yes |
+| `scenes/<name>` | one scene each (`wheel_rail`, `debug_clutter`, ...): geometry, randomisation | yes |
 | `eval/` | preview, dot detection/triangulation, dense stereo | no |
 
 The rig, sensor, dataset and eval packages are renderer-agnostic. If you later move to Mitsuba or Isaac, only `synthrig/render` and the scenes change.
@@ -37,7 +40,7 @@ python3 infra/cloud.py image build        # Python 3.11 + Blender 4.2 image
 python3 infra/cloud.py image test         # tests + CPU smoke render + preview
 python3 infra/cloud.py gpucheck           # OptiX vs CPU timing
 python3 infra/cloud.py status             # GPU, image, disk space left, running workers
-python3 infra/cloud.py submit --config configs/runs/app1_demo.yaml --frames 100 --shards 2
+python3 infra/cloud.py submit --config configs/debug_clutter/run.yaml --frames 100 --shards 2
 ```
 
 ## Before merging a branch: run the check script
@@ -94,7 +97,7 @@ On the rendering workstation:
 ```bash
 uv sync --extra render
 uv run python infra/cloud.py local-check --gpu --render
-uv run python -m synthrig configs/runs/app1_demo.yaml --device GPU --frames 2 --scale 0.25 --samples 16
+uv run python -m synthrig configs/debug_clutter/run.yaml --device GPU --frames 2 --scale 0.25 --samples 16
 ```
 
 Generated outputs default to `../data/`, outside Git. Relative `output` and
@@ -105,9 +108,9 @@ resolved from `code/`. Absolute output paths remain supported.
 After rendering or downloading a dataset, run evaluation locally:
 
 ```bash
-uv run python eval/preview.py ../data/datasets/app1_demo --frame 0 --out ../data/previews/app1.png
-uv run python eval/dots_eval.py ../data/datasets/app1_demo
-uv run python eval/stereo_eval.py ../data/datasets/app1_demo
+uv run python eval/preview.py ../data/datasets/debug_clutter --frame 0 --out ../data/previews/debug_clutter.png
+uv run python eval/dots_eval.py ../data/datasets/debug_clutter
+uv run python eval/stereo_eval.py ../data/datasets/debug_clutter
 ```
 
 The Docker image installs Blender 4.2 and the `render` dependency group from `uv.lock`
@@ -121,14 +124,14 @@ project/                  Open this parent directory to see code and data togeth
         README.md, LICENSE, AGENTS.md (agent rules), pyproject.toml, uv.lock   <- only files in the root
         synthrig/             The simulator package: opticsrig/, sensor/, render/, dataset/,
                               stereo.py, pipeline.py; `python -m synthrig` is the render CLI
-        scenes/               Environment plugins (bpy); never define hardware here
-        configs/              opticsrigs/, runs/, experiments/, scenes/, materials/
-        assets/               profiles/, textures/ (source assets, not generated outputs)
+        scenes/               One plugin per scene (bpy); never define hardware here
+        configs/              <scene>/{rig.yaml, scene.yaml, run.yaml}; sweeps/
+        assets/profiles/      wheels/*.csv, rails/*.csv (source data, not generated outputs)
         eval/                 Dataset evaluation and image previews (never imports bpy)
-        tools/                Validated config editing and parameter-case generation
+        tools/                config.py (validated edits, sweeps), gui/ (browser app)
         infra/                Docker image, cloud.py, worker, gpucheck, disk report, ec2/ scripts
         tests/                Automated correctness tests
-        docs/                 Task specs, status, datasheets/, previews/, reference/
+        docs/                 Task specs, status/, datasheets/, previews/
         .github/              Copilot instructions
         .claude/              Claude Code instructions (imports AGENTS.md)
         .secrets/             Git credentials; ignored by git and Docker (see its README)
@@ -137,19 +140,19 @@ project/                  Open this parent directory to see code and data togeth
 ```
 
 `synthrig/dataset/` is format/read/write code, not generated data. Hardware values
-live only in `configs/opticsrigs/`; datasheet references should distinguish
+live only in `configs/<scene>/rig.yaml`; datasheet references should distinguish
 specified, measured, derived and assumed values. Existing demo values are not
-manufacturer specifications. Material/scene config directories are reserved for
-future scene integration; current scene overrides remain in run `scene_params`.
+manufacturer specifications. Each scene folder holds its rig (camera/laser layout), its
+scene parameters (fixed values or sampling ranges) and its run settings.
 
 ## Configuration and viewing
 
 ```bash
-uv run python -m tools.config validate configs/runs/app1_demo.yaml
-uv run python -m tools.config set configs/runs/app1_demo.yaml render.samples 16
-uv run python -m tools.config validate configs/opticsrigs/demo_4cam_2laser.yaml --kind rig
-uv run python -m tools.config sweep configs/runs/app1_demo.yaml configs/experiments/ambient_sweep.yaml --out configs/runs/ambient_sweep
-uv run python -m synthrig.render.viewer configs/runs/app1_demo.yaml --frame 0 --out scenes/app1.blend --open
+uv run python -m tools.config validate configs/debug_clutter/run.yaml
+uv run python -m tools.config set configs/debug_clutter/run.yaml render.samples 16
+uv run python -m tools.config validate configs/debug_clutter/rig.yaml --kind rig
+uv run python -m tools.config sweep configs/debug_clutter/run.yaml configs/sweeps/ambient_sweep.yaml --out configs/sweeps/ambient_sweep_cases
+uv run python -m synthrig.render.viewer configs/debug_clutter/run.yaml --frame 0 --out scenes/debug_clutter.blend --open
 ```
 
 The viewer exports a `.blend` using the renderer's exact scene assembly path;
@@ -204,25 +207,27 @@ See the docstring in `synthrig/dataset/__init__.py` for the full listing. In sho
 ## Adding an application
 
 ```python
-# scenes/app3/__init__.py
-from synthrig.render.scene_api import Scene, SceneContext
+# scenes/my_scene/__init__.py
+from synthrig.render.scene_api import Scene, SceneContext, register_scene
 
+@register_scene("my_scene")
 class MyScene(Scene):
-    name = "app3"
     def sample_params(self, rng):          # ALL randomness here -> logged in meta.json
-        return {"angle": float(rng.uniform(0, 30))}
+        return {"angle": float(rng.uniform(0, 30))}   # (default: sample configs/my_scene/scene.yaml)
     def build(self, ctx: SceneContext, p):  # deterministic given p
         ...                                  # bpy geometry; ctx.add(obj, "class_name")
-        ctx.rig_look_at((0, -1.5, 1.0), (0, 0, 0.3))
 ```
 
-Then point a run config at `scene: scenes.app3:MyScene`. Scenes never touch cameras, lasers, sensors or files.
+Then create `configs/my_scene/` with `rig.yaml`, `run.yaml` (`scene: my_scene`) and
+optionally `scene.yaml`. Scenes never touch cameras, lasers, sensors or files.
 
 ## Changing the rig
 
-Edit `configs/opticsrigs/*.yaml`. The schema (`opticsrig/schema.py`) validates everything:
-* Cameras take `focal_length_mm` or `fx`, OpenCV distortion, and a pose via `look_at`, `euler_xyz_deg` or `R`.
-* Lasers take `wavelength_nm` or `color_rgb`, a pattern, `power_w`, `dot_sigma_mrad` and `enabled`.
+Edit `configs/<scene>/rig.yaml`. The schema (`opticsrig/schema.py`) validates everything:
+* `frame: track` places every device directly in the track frame (x along track, y left, z up); otherwise poses are relative to the rig and the scene places it.
+* Cameras take `hfov_deg`, `focal_length_mm` or `fx`, OpenCV distortion, and a pose via `look_at`, `euler_xyz_deg` or `R`.
+* Lasers take `wavelength_nm` or `color_rgb`, a pattern (`line` with `fan_deg`; `grid` with `fan_deg` or `pitch_deg`; `random`; `file`), `power_w`, `dot_sigma_mrad` and `enabled`.
+* The GUI (`python3 infra/cloud.py gui`) edits the most important of these with a live layout view.
 * `render_scale` scales every camera consistently, and the exported calibration matches the scaled images.
 
 ## Verified in this build

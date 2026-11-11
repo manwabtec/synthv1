@@ -1,8 +1,8 @@
-# Application 1 run: rig + scene + frame count -> dataset
-rig: ../opticsrigs/demo_4cam_2laser.yaml       # relative to this file
-scene: scenes.app1:ClutterScene
+# debug_clutter run: random clutter on a floor (generic stereo / dot sanity scene)
+rig: rig.yaml                             # relative to this file
+scene: debug_clutter
 scene_params: {}                          # fixed overrides of sampled params, e.g. {ambient: 0.1}
-output: datasets/app1_demo
+output: datasets/debug_clutter
 frames: 4
 seed: 1234
 render:

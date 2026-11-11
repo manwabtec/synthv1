@@ -71,7 +71,7 @@ python3 infra/cloud.py status               # code, GPU, image freshness, disk s
 python3 infra/cloud.py disk                 # space left on each volume, dataset sizes, frames that still fit
 
 git commit ...; python3 infra/cloud.py image build
-python3 infra/cloud.py submit --config configs/runs/app1_demo.yaml --frames 200 --shards 2 --scale 0.5
+python3 infra/cloud.py submit --config configs/debug_clutter/run.yaml --frames 200 --shards 2 --scale 0.5
 python3 infra/cloud.py status --run datasets/<scene>/<rig_hash>/<run_id>
 python3 infra/cloud.py stop   datasets/<scene>/<rig_hash>/<run_id>   # graceful; done frames are kept
 python3 infra/cloud.py resume datasets/<scene>/<rig_hash>/<run_id>   # renders only the missing frames

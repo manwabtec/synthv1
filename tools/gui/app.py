@@ -36,7 +36,7 @@ from tools.gui import figures  # noqa: E402
 
 st.set_page_config(page_title="synthrig", layout="wide")
 S = st.session_state
-RUNS = CODE_ROOT / "configs" / "runs"
+CONFIGS = CODE_ROOT / "configs"
 PATTERN_DEFAULTS = {
     "line": {"type": "line", "fan_deg": 40.0, "angle_deg": 90.0},
     "grid": {"type": "grid", "rows": 15, "cols": 21, "fan_deg": [24.0, 16.0]},
@@ -338,11 +338,11 @@ def images_tab(run_stem: str) -> None:
 
 
 # --------------------------------------------------------------------------- page
-runs = sorted(RUNS.glob("*.yaml"))
+runs = sorted(CONFIGS.glob("*/run.yaml"))
 with st.sidebar:
     st.header("synthrig")
-    default = next((i for i, r in enumerate(runs) if r.stem == "wheel_rail"), 0)
-    run = st.selectbox("Run config", runs, index=default, format_func=lambda p: p.name)
+    default = next((i for i, r in enumerate(runs) if r.parent.name == "wheel_rail"), 0)
+    run = st.selectbox("Scene (configs/<scene>/run.yaml)", runs, index=default, format_func=lambda p: p.parent.name)
     if S.get("run") != run:
         load_run(run)
     if st.button("Reload files from disk"):
@@ -361,7 +361,7 @@ is_track = S.rig_doc.get("frame") == "track" and S.run_doc.get("scene") == "whee
 with tab_layout:
     if not is_track:
         st.warning("The layout editor supports wheel_rail runs with a `frame: track` rig "
-                   "(e.g. configs/runs/wheel_rail.yaml).")
+                   "(e.g. configs/wheel_rail/).")
     else:
         left, right = st.columns([1, 2.2])
         try:
@@ -410,12 +410,12 @@ with tab_render:
     device = c4.selectbox("Device", ["GPU", "CPU"])
     if c5.button("Render", type="primary", disabled=job_running(), width="stretch"):
         stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-        out = Path("gui") / run.stem / stamp
+        out = Path("gui") / run.parent.name / stamp
         start_job("render", [sys.executable, "-m", "synthrig", str(run), "--frames", str(n_frames),
                              "--scale", str(scale), "--samples", str(samples), "--device", device,
                              "--out", str(out)], data_root() / out.with_suffix(".log"), frames=n_frames)
     job_status("render")
-    images_tab(run.stem)
+    images_tab(run.parent.name)
 
 with tab_3d:
     c1, c2 = st.columns([1, 2.6])
@@ -437,7 +437,7 @@ with tab_3d:
     with c2:
         if go_btn:
             stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-            out = data_root() / "gui" / run.stem / "overview" / f"{stamp}.png"
+            out = data_root() / "gui" / run.parent.name / "overview" / f"{stamp}.png"
             w, h = size.split("x")
             cmd = [sys.executable, "-m", "synthrig.render.observer", str(run), "--out", str(out),
                    "--frame", str(frame3), "--target", *map(str, pts3[target]), "--azimuth", str(az),
@@ -445,7 +445,7 @@ with tab_3d:
                    "--samples", str(spp)] + ([] if markers else ["--no-markers"])
             start_job("overview", cmd, out.with_suffix(".log"))
         job_status("overview")
-        shots = sorted((data_root() / "gui" / run.stem / "overview").glob("*.png"), reverse=True)
+        shots = sorted((data_root() / "gui" / run.parent.name / "overview").glob("*.png"), reverse=True)
         if shots:
             pick = st.selectbox("Rendered views", shots, format_func=lambda q: q.stem)
             st.image(str(pick), width="stretch")

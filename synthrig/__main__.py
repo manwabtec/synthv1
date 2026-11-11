@@ -1,8 +1,8 @@
 """Render a synthetic dataset (run from the repository root).
 
-  python -m synthrig configs/runs/app1_demo.yaml
-  python -m synthrig configs/runs/app1_demo.yaml --frames 2 --scale 0.25 --samples 16 --out datasets/preview
-  python -m synthrig configs/runs/app1_demo.yaml --header-only --out datasets/run   # manifest/calib only
+  python -m synthrig configs/debug_clutter/run.yaml
+  python -m synthrig configs/debug_clutter/run.yaml --frames 2 --scale 0.25 --samples 16 --out datasets/preview
+  python -m synthrig configs/debug_clutter/run.yaml --header-only --out datasets/run   # manifest/calib only
 """
 import argparse
 

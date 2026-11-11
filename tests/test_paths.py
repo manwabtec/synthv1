@@ -25,8 +25,8 @@ def test_override_and_absolute_output(tmp_path, monkeypatch):
 def test_run_config_resolves_rig_from_config_location(tmp_path, monkeypatch):
     from synthrig.pipeline import RunConfig
 
-    config = CODE_ROOT / "configs/runs/app1_demo.yaml"
+    config = CODE_ROOT / "configs/debug_clutter/run.yaml"
     monkeypatch.chdir(tmp_path)
     loaded = RunConfig.load(config)
-    assert Path(loaded.rig) == CODE_ROOT / "configs/opticsrigs/demo_4cam_2laser.yaml"
-    assert output_path(loaded.output).name == "app1_demo"
+    assert Path(loaded.rig) == CODE_ROOT / "configs/debug_clutter/rig.yaml"
+    assert output_path(loaded.output).name == "debug_clutter"

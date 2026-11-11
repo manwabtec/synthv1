@@ -12,7 +12,7 @@ import yaml
 from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "infra" / "config.yaml"
 
 

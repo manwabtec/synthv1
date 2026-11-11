@@ -18,7 +18,7 @@
 #   summary.txt        one PASS/FAIL/SKIP line per step + timings  <- read this first
 #   run_info.txt       branch, commit, host, time
 #   NN_<step>.log      full output of each step
-#   preview_app1.png   demo render preview (if the render succeeded)
+#   preview_debug_clutter.png   demo render preview (if the render succeeded)
 #
 # Writes only: the Docker image and the data root's diagnostics/, previews/ and
 # logs/check/ (and .venv/ with --uv). Nothing is written into the git checkout.
@@ -191,19 +191,19 @@ image_test()  { python3 -B infra/cloud.py image test; }
 gpucheck()    { python3 -B infra/cloud.py gpucheck; }
 image_demo() {
   local out="diagnostics/ec2_${RUN_ID}"
-  python3 -B infra/cloud.py exec -- python -m synthrig configs/runs/app1_demo.yaml --device GPU \
+  python3 -B infra/cloud.py exec -- python -m synthrig configs/debug_clutter/run.yaml --device GPU \
       --frames 2 --scale 0.25 --samples 16 --out "$out" || return 1
   python3 -B infra/cloud.py exec --no-gpu -- python eval/preview.py "/data/$out" --frame 0 \
       --out "/data/previews/ec2_${RUN_ID}.png" || return 1
-  cp "$DATA_ROOT/previews/ec2_${RUN_ID}.png" "$LOG_DIR/preview_app1.png"
+  cp "$DATA_ROOT/previews/ec2_${RUN_ID}.png" "$LOG_DIR/preview_debug_clutter.png"
 }
 overall_status() { python3 -B infra/cloud.py status; }
 
 demo_render() {
   local out="diagnostics/ec2_${RUN_ID}"
-  uv run python -m synthrig configs/runs/app1_demo.yaml --device GPU \
+  uv run python -m synthrig configs/debug_clutter/run.yaml --device GPU \
       --frames 2 --scale 0.25 --samples 16 --out "$out" || return 1
-  uv run python eval/preview.py "../data/$out" --frame 0 --out "$LOG_DIR/preview_app1.png"
+  uv run python eval/preview.py "../data/$out" --frame 0 --out "$LOG_DIR/preview_debug_clutter.png"
 }
 
 # ---------------------------------------------------------------- run

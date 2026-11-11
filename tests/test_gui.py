@@ -8,7 +8,7 @@ from streamlit.testing.v1 import AppTest  # noqa: E402
 
 from synthrig.paths import CODE_ROOT  # noqa: E402
 
-CONFIGS = [CODE_ROOT / "configs/opticsrigs/wheel_rail_v1.yaml", CODE_ROOT / "configs/scenes/wheel_rail.yaml"]
+CONFIGS = [CODE_ROOT / "configs/wheel_rail/rig.yaml", CODE_ROOT / "configs/wheel_rail/scene.yaml"]
 
 
 def test_app_opens_without_errors_or_file_changes():

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from infra.storage import disk
+from infra import disk
 
 
 def _dataset(root: Path, frames: int, bytes_per_frame: int) -> Path:

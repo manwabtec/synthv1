@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-DEMO = Path(__file__).resolve().parents[1] / "configs/runs/app1_demo.yaml"
+DEMO = Path(__file__).resolve().parents[1] / "configs/debug_clutter/run.yaml"
 
 
 def cycles_devices() -> list[tuple[str, str]]:

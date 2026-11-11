@@ -1,1 +1,0 @@
-"""Dataset transport adapters; simulation code never imports these modules."""

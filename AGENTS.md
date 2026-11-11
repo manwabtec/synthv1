@@ -1,11 +1,11 @@
 # Rules for coding agents working in this repo
 
-This repo renders synthetic images for a FIXED physical rig: 4 cameras (a stereo pair plus 2 side cameras) and 2 lasers (dot-pattern or line/fan). The rig never changes between scenes. Only the world in front of it changes. Read `README.md` before changing anything.
+This repo renders synthetic images for FIXED physical rigs: typically 4 cameras (a stereo pair plus 2 side cameras) and 2 lasers (dot-pattern or line/fan). Each scene has its own camera/laser layout (`configs/<scene>/rig.yaml`); within a scene the rig never changes between frames. Only the world in front of it changes. Read `README.md` before changing anything.
 
 ## Architecture invariants (do not break)
 
-1. **Layering.** `synthrig/opticsrig`, `synthrig/sensor`, `synthrig/stereo.py`, `synthrig/dataset` and `eval/` must NEVER import `bpy`. Only `synthrig/render/`, `synthrig/assets/` and `scenes/` may import it. There is a test for this. Keep it passing.
-2. **The rig is data.** Cameras, lasers, lights and sensor settings live only in `configs/opticsrigs/*.yaml`, validated by `synthrig/opticsrig/schema.py`. Never hard-code a camera or laser parameter in a scene or asset.
+1. **Layering.** `synthrig/opticsrig`, `synthrig/sensor`, `synthrig/stereo.py`, `synthrig/dataset` and `eval/` must NEVER import `bpy`. Only `synthrig/render/`, `synthrig/assets/blender/` and `scenes/` may import it (the rest of `synthrig/assets/`, `synthrig/layout.py` and `tools/gui/` stay bpy-free). There is a test for this. Keep it passing.
+2. **The rig is data.** Cameras, lasers, lights and sensor settings live only in `configs/<scene>/rig.yaml` (next to that scene's `scene.yaml` and `run.yaml`), validated by `synthrig/opticsrig/schema.py`. Never hard-code a camera or laser parameter in a scene or asset.
 3. **Scenes never touch** cameras, lasers, the sensor model, calibration, or file I/O. A scene only builds geometry and materials, registers objects with `ctx.add(obj, cls)`, and sets the rig pose (never for `frame: track` rigs, whose devices are placed directly in the track frame).
 4. **Conventions.**
    - Device frames are OpenCV-style (x right, y down, z forward).
@@ -47,7 +47,7 @@ This repo renders synthetic images for a FIXED physical rig: 4 cameras (a stereo
 - After Phase 0, any render or test can be run in the container: `python3 infra/cloud.py image test`, or `python3 infra/cloud.py exec --mount-code -- <cmd>` for uncommitted code.
 - For every new or changed scene, render a preview and look at it:
   ```
-   python -m synthrig configs/runs/<scene>.yaml --frames 2 --scale 0.25 --samples 16 --out datasets/<scene>
+   python -m synthrig configs/<scene>/run.yaml --frames 2 --scale 0.25 --samples 16 --out datasets/<scene>
    python eval/preview.py ../data/datasets/<scene> --out ../data/previews/<scene>.png
   ```
   Commit the preview to `docs/previews/` only when asked.

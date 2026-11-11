@@ -30,7 +30,7 @@ Follow `AGENTS.md`. Each step ends with its acceptance check passing.
 | Runtime | **One Docker image** (`infra/docker/Dockerfile`), used for tests, GPU checks and rendering. It is built locally on the instance, with no registry. |
 | Blender | Pinned to **4.2 LTS** via the `bpy==4.2.0` wheel (option A). Option B, the official tarball, is not needed: the GPU check passes with OptiX. The Blender version, image ID and git commit are written into every dataset's `manifest.json` (`generator_env`). |
 | Host tooling | `infra/cloud.py` runs with the system `python3` (3.9) and PyYAML only. Everything that needs Blender runs in the container. The user is not in the `docker` group, so `cloud.py` calls `sudo -n docker`. |
-| Credentials | None in the repo, the image or configs. AWS access from a laptop uses Okta → SSO (`docs/ONGOING_WORK.txt`). |
+| Credentials | None in the repo, the image or configs. AWS access from a laptop uses Okta → SSO. |
 | Cloud awareness | `synthrig/` stays cloud-agnostic. `infra/worker.py` wraps the `Pipeline`. |
 
 ## Configuration: `infra/config.yaml` (optional)
@@ -116,7 +116,7 @@ resources.
 ## Step 0.4: worker + shard contract ✅
 
 ```
-worker.py --config configs/runs/<x>.yaml --run-dir datasets/<scene>/<rig_hash>/<run_id>
+worker.py --config configs/<scene>/run.yaml --run-dir datasets/<scene>/<rig_hash>/<run_id>
           --shard-index K --num-shards N --frames-total F
           [--scale s] [--samples n] [--device OPTIX|CUDA|GPU|CPU] [--scratch /scratch] [--min-free-gb G]
 ```
@@ -153,7 +153,7 @@ worker.py --config configs/runs/<x>.yaml --run-dir datasets/<scene>/<rig_hash>/<
 ## Step 0.5: runs on the instance ✅ (replaces AWS Batch)
 
 ```
-python3 infra/cloud.py submit --config configs/runs/app1_demo.yaml --frames 1000 --shards 2 [--scale ..] [--samples ..]
+python3 infra/cloud.py submit --config configs/debug_clutter/run.yaml --frames 1000 --shards 2 [--scale ..] [--samples ..]
       # checks the git tree + image are clean and disk space is enough, writes the header,
       # starts one detached worker container per shard (restart on-failure up to 3x)
 python3 infra/cloud.py status --run <run dir>   # frames with _DONE, s/frame, render-hours, size, ETA, worker states

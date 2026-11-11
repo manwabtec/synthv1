@@ -18,7 +18,7 @@ def test_eval_and_host_tools_do_not_load_blender():
     code = ("import runpy, sys\n"
             "for f in ['eval/preview.py', 'eval/dots_eval.py', 'eval/stereo_eval.py']:\n"
             "    runpy.run_path(f, run_name='not_main')\n"
-            "import infra.cloud, infra.worker, infra.storage.disk\n"
+            "import infra.cloud, infra.worker, infra.disk\n"
             "import synthrig.layout, synthrig.sampling, synthrig.assets.wheelrail, synthrig.assets.classes\n"
             "try:\n    import tools.gui.figures, tools.gui.configio\nexcept ModuleNotFoundError:\n    pass\n"
             "assert 'bpy' not in sys.modules, 'bpy loaded'")
@@ -27,14 +27,14 @@ def test_eval_and_host_tools_do_not_load_blender():
 
 
 def test_access_module_uses_repository_config():
-    from infra.access.check import CONFIG_PATH
+    from infra.access_check import CONFIG_PATH
 
     assert CONFIG_PATH == CODE_ROOT / "infra/config.yaml"
 
 
 def test_access_check_has_help():
     result = subprocess.run(
-        [sys.executable, "-m", "infra.access.check", "--help"],
+        [sys.executable, "-m", "infra.access_check", "--help"],
         cwd=CODE_ROOT, capture_output=True, text=True,
     )
     assert result.returncode == 0, result.stderr

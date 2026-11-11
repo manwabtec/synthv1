@@ -12,7 +12,7 @@ image: synthrig               # local Docker image name (tag :latest + :<git sha
 min_free_gb: 20               # renders refuse to start, and workers stop, below this
 max_parallel_shards: 2        # worker containers sharing the one GPU before a warning
 
-# Used only by `python -m infra.access.check <instance-id>` from a laptop.
+# Used only by `python -m infra.access_check <instance-id>` from a laptop.
 # region: us-east-1
 # aws_profile: default
 # instance_id: i-0123456789abcdef0

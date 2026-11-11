@@ -1,17 +1,17 @@
-"""Application 1: random clutter on a textured floor (generic stereo / dot-triangulation test)."""
+"""debug_clutter: random clutter on a textured floor (generic stereo / dot-triangulation sanity scene)."""
 from __future__ import annotations
 
 import bpy
 import numpy as np
 
-from synthrig.render.materials import principled
-from synthrig.render.scene_api import Scene, SceneContext
+from synthrig.assets.blender.materials import principled
+from synthrig.render.scene_api import Scene, SceneContext, register_scene
 
 SHAPES = ["cube", "sphere", "cylinder", "cone", "torus"]
 
 
+@register_scene("debug_clutter")
 class ClutterScene(Scene):
-    name = "app1_clutter"
 
     def sample_params(self, rng):
         n = int(rng.integers(5, 13))

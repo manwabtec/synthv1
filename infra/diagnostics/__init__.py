@@ -1,1 +1,0 @@
-"""Checks for local execution environments, independent of AWS."""

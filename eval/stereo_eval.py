@@ -2,7 +2,7 @@
 """Dense stereo evaluation: run a matcher on the rectified pairs, compare to GT disparity.
 Reads the dataset only. Swap `run_matcher` for your own algorithm.
 
-  python eval/stereo_eval.py out/app1_demo [--json results.json]
+  python eval/stereo_eval.py datasets/debug_clutter [--json results.json]
 """
 import argparse
 import json

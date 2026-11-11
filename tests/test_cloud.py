@@ -60,7 +60,7 @@ def test_submit_refuses_dirty_tree_and_stale_image(monkeypatch, capsys):
     monkeypatch.setattr(cloud, "load_config", lambda: dict(defaults))
     monkeypatch.setattr(cloud, "git_state", lambda: {"sha": "abc1234", "branch": "b", "dirty": True})
     monkeypatch.setattr(cloud, "image_info", lambda _c: {"id": "x", "git_sha": "0000000", "git_dirty": "false"})
-    rc = cloud.main(["submit", "--config", "configs/runs/app1_demo.yaml", "--frames", "2"])
+    rc = cloud.main(["submit", "--config", "configs/debug_clutter/run.yaml", "--frames", "2"])
     err = capsys.readouterr().err
     assert rc == 2 and "uncommitted changes" in err and "built from 0000000" in err
 

@@ -1,1 +1,0 @@
-"""AWS authentication and service-access checks, separate from local diagnostics."""

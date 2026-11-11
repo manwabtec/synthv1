@@ -10,7 +10,7 @@ Everything that needs Blender runs inside the Docker image.
   python3 infra/cloud.py disk                   # free space + dataset sizes only
   python3 infra/cloud.py image build | test
   python3 infra/cloud.py gpucheck
-  python3 infra/cloud.py submit --config configs/runs/app1_demo.yaml --frames 8 --shards 2
+  python3 infra/cloud.py submit --config configs/debug_clutter/run.yaml --frames 8 --shards 2
   python3 infra/cloud.py status --run datasets/<scene>/<rig_hash>/<run_id>
   python3 infra/cloud.py stop datasets/<scene>/<rig_hash>/<run_id>
   python3 infra/cloud.py resume datasets/<scene>/<rig_hash>/<run_id>
@@ -36,7 +36,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 CONFIG_PATH = ROOT / "infra" / "config.yaml"
 
-from infra.storage import disk  # noqa: E402
+from infra import disk  # noqa: E402
 from synthrig.paths import data_root as default_data_root  # noqa: E402  (stdlib only)
 
 # Machine-neutral defaults; infra/config.yaml overrides them (EC2 sets /app/synthrig etc.).
@@ -49,7 +49,7 @@ DEFAULTS: Dict[str, Any] = {
     "min_free_gb": 20,              # renders refuse to start / continue below this
     "max_parallel_shards": 2,       # worker containers sharing the one GPU
 }
-# Used only by infra/access/check.py from a laptop.
+# Used only by infra/access_check.py from a laptop.
 OPTIONAL = {"owner", "region", "aws_profile", "instance_id"}
 CONTAINER_DATA = "/data"
 CONTAINER_SCRATCH = "/scratch"
@@ -346,7 +346,7 @@ def cmd_image(a: argparse.Namespace) -> int:
     if a.no_render:
         return 0
     out = "diagnostics/image_test"
-    run(container(config, ["python", "-m", "synthrig", "configs/runs/app1_demo.yaml", "--frames", "1", "--scale",
+    run(container(config, ["python", "-m", "synthrig", "configs/debug_clutter/run.yaml", "--frames", "1", "--scale",
                            "0.125", "--samples", "4", "--device", "CPU", "--out", out], gpu=False))
     run(container(config, ["python", "eval/preview.py", f"{CONTAINER_DATA}/{out}", "--frame", "0",
                            "--out", f"{CONTAINER_DATA}/previews/image_test.png"], gpu=False))
@@ -474,7 +474,7 @@ def cmd_stop(a: argparse.Namespace) -> int:
 
 
 def cmd_local_check(a: argparse.Namespace) -> int:
-    from infra.diagnostics.local import check
+    from infra.local_check import check
 
     check(gpu=a.gpu, render=a.render)
     return 0

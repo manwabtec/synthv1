@@ -7,7 +7,7 @@ from synthrig.opticsrig.schema import Rig
 from synthrig.opticsrig.transforms import CV_TO_BLENDER_OBJ, look_at_R, pose_to_T
 from synthrig.sensor import apply_sensor
 
-RIG = "configs/opticsrigs/demo_4cam_2laser.yaml"
+RIG = "configs/debug_clutter/rig.yaml"
 
 
 def test_rig_loads_and_hash_stable():

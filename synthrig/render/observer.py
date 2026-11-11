@@ -1,7 +1,7 @@
 """Overview render: the configured scene seen from a free 'observer' viewpoint, with the
 rig's cameras and lasers drawn as markers. For inspection only (not a dataset output).
 
-  python -m synthrig.render.observer configs/runs/wheel_rail.yaml --frame 0 \
+  python -m synthrig.render.observer configs/wheel_rail/run.yaml --frame 0 \
       --target 0 -0.75 0.1 --azimuth -60 --elevation 25 --distance 2.0 --out /data/gui/overview.png
 
 The scene is assembled exactly as for the dataset (same seed/frame). Markers never cast

@@ -1,7 +1,7 @@
 # wheel_rail run: rig + scene (+ its config) + frames -> dataset
-rig: ../opticsrigs/wheel_rail_v1.yaml
+rig: rig.yaml
 scene: wheel_rail
-scene_config: ../scenes/wheel_rail.yaml
+scene_config: scene.yaml
 scene_params: {}                  # fixed overrides applied after sampling
 output: datasets/wheel_rail
 frames: 4

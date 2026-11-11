@@ -23,6 +23,9 @@ Prerequisite: `docs/TASK_infra.md` (Phase 0) is complete. Follow `AGENTS.md`. Do
   contour; rim/plate/hub completed with placeholders). Rail: `rail_136re_placeholder`.
 - **Scene configs** hold fixed values or sampling specs (`{uniform: [lo, hi]}`,
   `{normal: [mean, sd]}`, `{choice: [...]}`), see `synthrig/sampling.py`.
+- **Layout:** one folder per scene, `configs/<scene>/{rig.yaml, scene.yaml, run.yaml}`.
+  Blender-free asset geometry lives in `synthrig/assets/`, bpy builders in
+  `synthrig/assets/blender/`.
 - **GUI** (new Phase 5): a browser app running in the Docker image with tabs for
   (1) layout editing of the most important camera, laser and wheel parameters with a live
   3D layout view that writes back to the config YAML, (2) starting renders and viewing the
@@ -30,7 +33,7 @@ Prerequisite: `docs/TASK_infra.md` (Phase 0) is complete. Follow `AGENTS.md`. Do
 
 **Progress:** Phase 1 done except sequence mode. Phase 2: profiles, wheel (split into
 tread/flange/rim face/plate/hub), rails, ties, tie plates, ballast. Phase 3: `wheel_rail`
-scene with `configs/opticsrigs/wheel_rail_v1.yaml` (example layout).
+scene with `configs/wheel_rail/rig.yaml` (example layout).
 Phase 5 (GUI): `tools/gui/app.py` (`python3 infra/cloud.py gui`) with the Layout,
 Render & images and 3D view tabs; layout geometry in `synthrig/layout.py` (no bpy), 3D
 overview renderer in `synthrig/render/observer.py`. Still open: sequence mode, wheelset
@@ -65,7 +68,7 @@ Part-level labels require the wheel to be built as separate objects (or material
 ## Phase 1: framework changes (no new geometry yet)
 
 1. **Scene registry.** Add a decorator `@register_scene("wheel_rail")` in `synthrig/render/scene_api.py`. Run configs should say `scene: wheel_rail` instead of `module:Class`. Keep the `module:Class` form working.
-2. **Scene parameter ranges in YAML.** Add `configs/scenes/<scene_id>.yaml`, holding every randomisation range (e.g. `rust: [0.0, 0.6]`, `wheel_rot_deg: [0, 360]`). The scene reads ranges from its config, and `sample_params` samples inside them. A scene's pydantic params model validates the file. The run config references it: `scene_config: configs/scenes/wheel_rail.yaml`.
+2. **Scene parameter ranges in YAML.** Add `configs/<scene_id>/scene.yaml`, holding every randomisation range (e.g. `rust: [0.0, 0.6]`, `wheel_rot_deg: [0, 360]`). The scene reads ranges from its config, and `sample_params` samples inside them. A scene's pydantic params model validates the file. The run config references it: `scene_config: configs/wheel_rail/scene.yaml`.
 3. **Sequence mode.**
    - Add an optional `Scene.sample_sequence(rng, n_frames) -> list[dict]`, where the default calls `sample_params` n times.
    - Add `mode: independent | sequence` to the run config. In sequence mode the pipeline draws one sequence per `sequence_id`.
@@ -96,12 +99,12 @@ Modules:
 - `truck.py`: a simplified 3-piece truck (two side frames, a bolster, two wheelsets, brake beams as boxes). Wheelbase is a parameter.
 - `car.py`: a car body as a parametric box/hopper/tank shape, with length, truck centres and couplers. Low detail is fine. It mostly occludes and sets the background.
 - `consist.py`: a list of cars, and the `(x_offset → object transforms)` function used by the train sequence.
-- `materials.py`: move `render/materials.py` here and add steel/rust/wear-band, concrete-tie, wood-tie and ballast presets. Presets take numbers, not rng.
+- `materials.py`: moved to `synthrig/assets/blender/materials.py` (done); add steel/rust/wear-band, concrete-tie, wood-tie and ballast presets. Presets take numbers, not rng.
 - `environment.py`: ground, sky/ambient presets (day, overcast, night with only rig lights).
 
 **Performance rules:** use linked duplicates (instances) for repeated parts (ties, fasteners, wheelsets, trucks). Build the whole-train geometry once per sequence, not per frame, and only move transforms per frame. Anything outside every camera's frustum by more than a margin must not be built at all. Add a helper that culls by the rig frustum.
 
-## Phase 3: the four scenes (`scenes/<id>/__init__.py` + `configs/scenes/<id>.yaml` + `configs/runs/<id>.yaml`)
+## Phase 3: the four scenes (`scenes/<id>/__init__.py` + `configs/<id>/{rig,scene,run}.yaml`)
 
 **`wheel_rail`**: a single wheelset on track (a short track segment is enough).
 - Randomise: wheel rotation angle, lateral wheelset shift (flange-to-rail clearance within limits), wheel wear/rust/running band, rail wear, ambient preset, mount jitter.
@@ -128,7 +131,7 @@ Modules:
 - Optional sequence mode: the track scrolls along x.
 - Acceptance: both rail heads are visible in the stereo pair, and GT disparity is valid on ties and ballast.
 
-Delete `scenes/app1` and `scenes/app2` only after the new scenes pass. Keep `app1` (clutter) as `scenes/debug_clutter`, because it is a useful non-railway sanity scene.
+Done (2026-11-11): `scenes/app2` was removed (superseded by `wheel_rail`) and `app1` (clutter) kept as `scenes/debug_clutter`, because it is a useful non-railway sanity scene.
 
 ## Phase 4: tests and validation per scene
 

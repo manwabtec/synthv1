@@ -1,4 +1,4 @@
-"""Small material helpers for scenes (bpy)."""
+"""Material helpers for scenes and asset builders (bpy)."""
 from __future__ import annotations
 
 import bpy

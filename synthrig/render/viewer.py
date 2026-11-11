@@ -24,7 +24,7 @@ def export_scene(config: Path, destination: Path, frame: int = 0) -> Path:
     cfg = RunConfig.load(config)
     rig = RigModel.build(load_rig(cfg.rig), cfg.render.render_scale)
     backend = BlenderBackend(RenderSettings(**cfg.render.model_dump(exclude={"render_scale"})))
-    scene = load_scene(cfg.scene, cfg.scene_params)
+    scene = load_scene(cfg.scene, cfg.scene_params, cfg.scene_config)
     build_frame(backend, rig, scene, cfg.seed, frame)
     destination.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(destination))

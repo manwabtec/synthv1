@@ -1,0 +1,17 @@
+# wheel_rail run: rig + scene (+ its config) + frames -> dataset
+rig: ../opticsrigs/wheel_rail_v1.yaml
+scene: wheel_rail
+scene_config: ../scenes/wheel_rail.yaml
+scene_params: {}                  # fixed overrides applied after sampling
+output: datasets/wheel_rail
+frames: 4
+seed: 1
+render:
+  samples: 32
+  render_scale: 0.5
+  device: GPU
+outputs:
+  save_radiance: true
+  save_laser_components: true
+calib_perturbation:
+  enabled: false

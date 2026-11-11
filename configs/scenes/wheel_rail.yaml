@@ -1,0 +1,12 @@
+# wheel_rail scene: fixed values, or sampling specs {uniform: [lo, hi]}, {normal: [mean, sd]},
+# {choice: [...]}. Every key is a field of synthrig.assets.wheelrail.WheelRailParams; keys
+# left out use its defaults. Track frame: x along track, y left, z up, metres.
+wheel_profile: AAR_2A_ref_wide        # assets/profiles/wheels/<name>.csv
+rail_profile: rail_136re_placeholder  # assets/profiles/rails/<name>.csv
+wheel_x_m: 0.0                        # wheel centre along the track
+wheel_rot_deg: {uniform: [0, 360]}    # a different tread patch every frame
+lateral_shift_m: 0.0
+rust: {uniform: [0.0, 0.4]}
+roughness: {uniform: [0.3, 0.6]}
+ambient: 0.08
+noise_seed: {uniform: [0, 100]}

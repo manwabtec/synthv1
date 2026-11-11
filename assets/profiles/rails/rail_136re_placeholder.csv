@@ -1,0 +1,38 @@
+# PLACEHOLDER rail section approximating the general shape of a North American 136RE-class
+# rail. NOT the AREMA standard's dimensions: replace with a sourced profile when available.
+# Columns: part, u_mm (lateral from rail centreline, + towards gauge side), h_mm (above base).
+# One closed polygon per part. Approximate overall: height 186, base 152, head 75 wide.
+part,u_mm,h_mm
+head,-37.3,137.0
+head,-37.3,165.0
+head,-36.0,174.0
+head,-32.0,180.5
+head,-24.0,184.5
+head,-12.0,186.0
+head,0.0,186.4
+head,12.0,186.0
+head,24.0,184.5
+head,32.0,180.5
+head,36.0,174.0
+head,37.3,165.0
+head,37.3,137.0
+head,30.0,130.0
+head,15.0,126.0
+head,8.7,124.0
+head,-8.7,124.0
+head,-15.0,126.0
+head,-30.0,130.0
+web,-8.7,124.0
+web,8.7,124.0
+web,8.7,40.0
+web,-8.7,40.0
+foot,-8.7,40.0
+foot,8.7,40.0
+foot,20.0,33.0
+foot,50.0,24.0
+foot,76.2,17.0
+foot,76.2,0.0
+foot,-76.2,0.0
+foot,-76.2,17.0
+foot,-50.0,24.0
+foot,-20.0,33.0

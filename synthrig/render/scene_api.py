@@ -4,7 +4,11 @@ A scene is Blender-bound (it builds geometry with bpy) but knows nothing about c
 lasers, sensors or the dataset format. It receives a SceneContext and:
   * adds objects via ctx.add(obj, cls)   -> segmentation index + class map
   * optionally sets the ambient light and where the rig sits: ctx.set_rig_pose(T_world_rig)
+    (not for `frame: track` rigs, whose devices are already placed in the world)
 The rig is fixed; scenes only vary the world in front of it.
+
+Scenes register under a short name with @register_scene("name") in scenes/<name>/;
+run configs then say `scene: name`. The `module:Class` form still works.
 """
 from __future__ import annotations
 
@@ -47,23 +51,50 @@ class SceneContext:
         self.backend.set_ambient(color, strength)
 
     def set_rig_pose(self, T_world_rig: np.ndarray):
+        if self.rig.spec.frame == "track":
+            raise RuntimeError("this rig places its devices in the track frame (frame: track); "
+                               "scenes must not move it")
         self.T_world_rig = np.asarray(T_world_rig, float)
 
     def rig_look_at(self, position, target, world_up=(0, 0, 1)):
         self.set_rig_pose(rig_pose_look_at(position, target, world_up))
 
 
+SCENES: dict[str, type["Scene"]] = {}
+
+
+def register_scene(name: str):
+    """Class decorator: make a scene loadable as `scene: <name>` in run configs."""
+    def deco(cls):
+        if name in SCENES and SCENES[name] is not cls:
+            raise ValueError(f"scene name {name!r} registered twice")
+        cls.name = name
+        SCENES[name] = cls
+        return cls
+    return deco
+
+
 class Scene(ABC):
-    """Subclass per application. Keep all randomness in sample_params (logged per frame)."""
+    """Subclass per application. Keep all randomness in sample_params (logged per frame).
+
+    `config` is the scene config file's content (fixed values and sampling specs, see
+    synthrig.sampling); `overrides` (run config `scene_params`) replace sampled values.
+    """
 
     name: str = "scene"
 
-    def __init__(self, **overrides: Any):
+    def __init__(self, config: dict | None = None, **overrides: Any):
+        self.config = dict(config or {})
         self.overrides = overrides
 
-    @abstractmethod
     def sample_params(self, rng: np.random.Generator) -> dict:
-        """Draw this frame's scene parameters. Must be JSON-serialisable."""
+        """Draw this frame's scene parameters. Must be JSON-serialisable.
+
+        Default: sample the scene config file. Scenes may override this.
+        """
+        from ..sampling import sample_config
+
+        return sample_config(self.config, rng)
 
     @abstractmethod
     def build(self, ctx: SceneContext, params: dict) -> None:

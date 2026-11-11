@@ -1,4 +1,4 @@
-"""Dot-pattern laser projector model. Renderer-agnostic.
+"""Laser projector model (dot patterns and line/fan lasers). Renderer-agnostic.
 
 A pattern is a fixed list of dot directions in the projector frame (OpenCV-style,
 z = emission axis), stored as tangents (tx, ty) = (x/z, y/z). That list is the analytic
@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from .schema import FilePattern, GridPattern, Laser, RandomPattern
+from .schema import FilePattern, GridPattern, Laser, LinePattern, RandomPattern
 from .transforms import pose_to_T
 
 
@@ -35,11 +35,27 @@ def wavelength_to_rgb(nm: float) -> list[float]:
     return [float(r), float(g), float(b)]
 
 
-def pattern_tangents(p) -> np.ndarray:
-    """(N,2) dot directions as tangents in the projector frame."""
+def pattern_tangents(p, dot_sigma_rad: float = 5e-4) -> np.ndarray:
+    """(N,2) dot directions as tangents in the projector frame.
+
+    dot_sigma_rad sets the default sample spacing of line patterns (half the dot sigma).
+    """
+    if isinstance(p, LinePattern):
+        spacing = p.spacing_mrad * 1e-3 if p.spacing_mrad else dot_sigma_rad / 2
+        half = np.deg2rad(p.fan_deg) / 2
+        n = int(np.ceil(2 * half / spacing)) + 1
+        a = np.linspace(-half, half, n)  # angle within the light sheet
+        # direction (sin a, 0, cos a) rotated about z by angle_deg -> tangents
+        c, s = np.cos(np.deg2rad(p.angle_deg)), np.sin(np.deg2rad(p.angle_deg))
+        t = np.tan(a)
+        return np.stack([t * c, t * s], 1)
     if isinstance(p, GridPattern):
-        ax = (np.arange(p.cols) - (p.cols - 1) / 2) * np.deg2rad(p.pitch_deg[0])
-        ay = (np.arange(p.rows) - (p.rows - 1) / 2) * np.deg2rad(p.pitch_deg[1])
+        if p.fan_deg is not None:
+            pitch = [f / max(n - 1, 1) for f, n in zip(p.fan_deg, (p.cols, p.rows))]
+        else:
+            pitch = p.pitch_deg
+        ax = (np.arange(p.cols) - (p.cols - 1) / 2) * np.deg2rad(pitch[0])
+        ay = (np.arange(p.rows) - (p.rows - 1) / 2) * np.deg2rad(pitch[1])
         gx, gy = np.meshgrid(ax, ay)
         ang = np.stack([gx.ravel(), gy.ravel()], 1)
         if p.jitter_deg > 0:
@@ -79,7 +95,8 @@ class LaserModel:
     @classmethod
     def from_spec(cls, l: Laser) -> "LaserModel":
         rgb = l.color_rgb if l.color_rgb is not None else wavelength_to_rgb(l.wavelength_nm)
-        return cls(l.name, pose_to_T(l.pose), pattern_tangents(l.pattern), np.asarray(rgb, float),
+        return cls(l.name, pose_to_T(l.pose), pattern_tangents(l.pattern, l.dot_sigma_mrad * 1e-3),
+                   np.asarray(rgb, float),
                    l.power_w, l.dot_sigma_mrad * 1e-3, l)
 
     @property

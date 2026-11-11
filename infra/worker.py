@@ -117,7 +117,7 @@ def describe(config: str) -> dict:
     from synthrig.opticsrig.schema import load_rig
 
     cfg = RunConfig.load(config)
-    scene = load_scene(cfg.scene, cfg.scene_params)
+    scene = load_scene(cfg.scene, cfg.scene_params, cfg.scene_config)
     return {"scene": getattr(scene, "name", cfg.scene.split(":")[-1]), "rig_hash": load_rig(cfg.rig).hash()}
 
 

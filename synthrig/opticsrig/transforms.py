@@ -53,7 +53,8 @@ def pose_to_T(pose: Pose) -> np.ndarray:
     """Device -> rig transform from a schema Pose."""
     p = np.asarray(pose.position, float)
     if pose.look_at is not None:
-        R = look_at_R(p, pose.look_at, pose.up)
+        # up is filled from the rig's frame by Rig validation; a bare Pose uses rig-frame up.
+        R = look_at_R(p, pose.look_at, pose.up if pose.up is not None else (0.0, -1.0, 0.0))
     elif pose.euler_xyz_deg is not None:
         R = Rotation.from_euler("xyz", pose.euler_xyz_deg, degrees=True).as_matrix()
     elif pose.R is not None:

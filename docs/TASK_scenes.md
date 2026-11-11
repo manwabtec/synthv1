@@ -11,6 +11,27 @@ Goal: replace the two demo scenes with four production scenes built from ONE sha
 
 Prerequisite: `docs/TASK_infra.md` (Phase 0) is complete. Follow `AGENTS.md`. Do this in the phases below. Each phase ends with passing tests and preview images.
 
+**Decisions by the project owner (2026-11-10), overriding the text below where they differ:**
+- **Devices are placed in the track frame.** Rig files with `frame: track` give every
+  camera and laser its own position + aim point in track coordinates; the scene never
+  moves the rig. Mount files (`configs/mounts/`) are therefore not needed for track-frame
+  rigs (still allowed for `frame: rig` rigs).
+- **Lasers:** `line` (fan angle, line orientation) and dot patterns (`grid` with `fan_deg`
+  or `pitch_deg`, `random`, `file`), chosen per laser. Cameras accept `hfov_deg`.
+- **Wheel profiles** are a library: `assets/profiles/wheels/*.csv`, chosen by name in the
+  scene config (`wheel_profile`). First profile: `AAR_2A_ref_wide` (tread + flange
+  contour; rim/plate/hub completed with placeholders). Rail: `rail_136re_placeholder`.
+- **Scene configs** hold fixed values or sampling specs (`{uniform: [lo, hi]}`,
+  `{normal: [mean, sd]}`, `{choice: [...]}`), see `synthrig/sampling.py`.
+- **GUI** (new Phase 5): a browser app running in the Docker image with tabs for
+  (1) layout editing of the most important camera, laser and wheel parameters with a live
+  3D layout view that writes back to the config YAML, (2) starting renders and viewing the
+  camera images, and (3) a Blender-rendered 3D overview of the scene.
+
+**Progress:** Phase 1 done except sequence mode. Phase 2: profiles, wheel (split into
+tread/flange/rim face/plate/hub), rails, ties, tie plates, ballast. Phase 3: `wheel_rail`
+scene with `configs/opticsrigs/wheel_rail_v1.yaml` (example layout).
+
 ---
 
 ## 1. Conventions to adopt first

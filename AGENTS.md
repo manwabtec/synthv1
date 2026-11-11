@@ -1,12 +1,12 @@
 # Rules for coding agents working in this repo
 
-This repo renders synthetic images for a FIXED physical rig: 4 cameras (a stereo pair plus 2 side cameras) and 2 dot-pattern lasers. The rig never changes between scenes. Only the world in front of it changes. Read `README.md` before changing anything.
+This repo renders synthetic images for a FIXED physical rig: 4 cameras (a stereo pair plus 2 side cameras) and 2 lasers (dot-pattern or line/fan). The rig never changes between scenes. Only the world in front of it changes. Read `README.md` before changing anything.
 
 ## Architecture invariants (do not break)
 
 1. **Layering.** `synthrig/opticsrig`, `synthrig/sensor`, `synthrig/stereo.py`, `synthrig/dataset` and `eval/` must NEVER import `bpy`. Only `synthrig/render/`, `synthrig/assets/` and `scenes/` may import it. There is a test for this. Keep it passing.
 2. **The rig is data.** Cameras, lasers, lights and sensor settings live only in `configs/opticsrigs/*.yaml`, validated by `synthrig/opticsrig/schema.py`. Never hard-code a camera or laser parameter in a scene or asset.
-3. **Scenes never touch** cameras, lasers, the sensor model, calibration, or file I/O. A scene only builds geometry and materials, registers objects with `ctx.add(obj, cls)`, and sets the rig pose.
+3. **Scenes never touch** cameras, lasers, the sensor model, calibration, or file I/O. A scene only builds geometry and materials, registers objects with `ctx.add(obj, cls)`, and sets the rig pose (never for `frame: track` rigs, whose devices are placed directly in the track frame).
 4. **Conventions.**
    - Device frames are OpenCV-style (x right, y down, z forward).
    - The OpenCV → Blender conversion lives ONLY in `CV_TO_BLENDER_OBJ` / `BlenderBackend._place`.

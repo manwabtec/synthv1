@@ -56,8 +56,9 @@ class PerturbCfg(_Strict):
 
 class RunConfig(_Strict):
     rig: str
-    scene: str  # "module.path:ClassName"
-    scene_params: dict[str, Any] = {}
+    scene: str  # registered scene name (scenes/<name>/) or "module.path:ClassName"
+    scene_config: Optional[str] = None  # YAML of fixed values / sampling specs (relative to this file)
+    scene_params: dict[str, Any] = {}  # fixed overrides applied after sampling
     output: str = "datasets/default"
     frames: int = 1
     start: int = 0
@@ -72,12 +73,25 @@ class RunConfig(_Strict):
         cfg = cls.model_validate(yaml.safe_load(path.read_text()))
         if not Path(cfg.rig).is_absolute():
             cfg.rig = str((path.parent / cfg.rig).resolve())
+        if cfg.scene_config and not Path(cfg.scene_config).is_absolute():
+            cfg.scene_config = str((path.parent / cfg.scene_config).resolve())
         return cfg
 
 
-def load_scene(spec: str, params: dict):
-    mod, cls = spec.split(":")
-    return getattr(importlib.import_module(mod), cls)(**params)
+def load_scene(spec: str, params: dict, config_path: Optional[str] = None):
+    """Instantiate a scene from `name` (scenes/<name>/ registers it) or `module:Class`."""
+    config = yaml.safe_load(Path(config_path).read_text()) if config_path else {}
+    if ":" in spec:
+        mod, cls = spec.split(":")
+        scene_cls = getattr(importlib.import_module(mod), cls)
+    else:
+        from .render.scene_api import SCENES
+
+        importlib.import_module(f"scenes.{spec}")
+        if spec not in SCENES:
+            raise ValueError(f"scenes/{spec} does not register a scene named {spec!r}")
+        scene_cls = SCENES[spec]
+    return scene_cls(config or {}, **params)
 
 
 def _lum(rgb: np.ndarray, sensor) -> np.ndarray:
@@ -144,7 +158,7 @@ class Pipeline:
                                                      max_bounces=r.max_bounces,
                                                      device="CPU" if r.device == "CPU" else "GPU",
                                                      threads=r.threads))
-        self.scene = load_scene(cfg.scene, cfg.scene_params)
+        self.scene = load_scene(cfg.scene, cfg.scene_params, cfg.scene_config)
         self.out = output_path(cfg.output)
         t = time.time()
         self.plans = {n: c.render_plan() for n, c in self.rig.cameras.items()}

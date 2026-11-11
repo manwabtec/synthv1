@@ -18,8 +18,10 @@ import numpy as np
 
 from ..opticsrig.schema import Sensor
 
-_BAYER_CODES = {"RGGB": cv2.COLOR_BayerRG2BGR, "BGGR": cv2.COLOR_BayerBG2BGR,
-                "GRBG": cv2.COLOR_BayerGR2BGR, "GBRG": cv2.COLOR_BayerGB2BGR}
+# OpenCV names its Bayer codes after the pattern one pixel along (row 1, cols 1-2), so a
+# sensor whose top-left 2x2 is RGGB needs COLOR_BayerBG2BGR. tests/test_sensor.py checks it.
+_BAYER_CODES = {"RGGB": cv2.COLOR_BayerBG2BGR, "BGGR": cv2.COLOR_BayerRG2BGR,
+                "GRBG": cv2.COLOR_BayerGB2BGR, "GBRG": cv2.COLOR_BayerGR2BGR}
 _BAYER_LAYOUT = {"RGGB": ((0, 1), (1, 2)), "BGGR": ((2, 1), (1, 0)),
                  "GRBG": ((1, 0), (2, 1)), "GBRG": ((1, 2), (0, 1))}
 

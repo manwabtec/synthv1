@@ -75,6 +75,28 @@ def write_stereo_yaml(path: Path, s: StereoCalib):
     fs.release()
 
 
+def write_pair_yaml(path: Path, name: str, L: CameraModel, R: CameraModel):
+    """Unrectified stereo pair: R, T with x_right = R x_left + T (camera frames, m)."""
+    T_r_l = inv_T(R.T_rig_cam) @ L.T_rig_cam
+    fs = cv2.FileStorage(str(path), cv2.FILE_STORAGE_WRITE)
+    fs.write("name", name)
+    fs.write("left", L.name)
+    fs.write("right", R.name)
+    fs.write("R", T_r_l[:3, :3])
+    fs.write("T", T_r_l[:3, 3].reshape(3, 1))
+    fs.write("baseline_m", float(np.linalg.norm(T_r_l[:3, 3])))
+    fs.release()
+
+
+def read_pair_yaml(path: Path) -> dict:
+    fs = cv2.FileStorage(str(path), cv2.FILE_STORAGE_READ)
+    out = {k: fs.getNode(k).string() for k in ("name", "left", "right")}
+    out["R"] = fs.getNode("R").mat()
+    out["T"] = fs.getNode("T").mat().ravel()
+    fs.release()
+    return out
+
+
 def read_camera_yaml(path: Path) -> dict:
     fs = cv2.FileStorage(str(path), cv2.FILE_STORAGE_READ)
     out = {"name": fs.getNode("name").string(),

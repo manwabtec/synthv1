@@ -18,7 +18,7 @@ scene ────┘   pinhole canvas      noise, bloom,    disparity,       (f
 | `synthrig/render` | Blender backend, the scene API, the 3D overview renderer | **yes** |
 | `synthrig/assets` | profiles, class taxonomy, track-frame wheel/rail geometry | no |
 | `synthrig/assets/blender` | Blender builders and materials for the assets | **yes** |
-| `synthrig/layout.py`, `synthrig/sampling.py` | GUI layout geometry, scene-config sampling | no |
+| `synthrig/layout.py`, `synthrig/sampling.py` | layout geometry reference (numpy), scene-config sampling | no |
 | `synthrig/sensor` | post-render camera model | no |
 | `synthrig/stereo.py` | rectification, exact GT disparity | no |
 | `synthrig/dataset` | on-disk format: writer helpers and reader | no |
@@ -67,17 +67,24 @@ python3 infra/cloud.py gui      # then open http://localhost:8501 (VS Code forwa
 
 A browser app running in the Docker image (GPU included), for `wheel_rail`-type runs:
 
-- **Layout**: edit the wheel (profile, position along the rail, rotation, lateral shift, as a
-  fixed value or a random range), each camera (position, aim point, horizontal field of
-  view) and each laser (position, aim point, line or dot pattern, fan angle, power). "Aim
-  at" snaps an aim point to a named point (tread contact, flange tip, rail head, wheel
-  centre). The 3D layout and the per-camera views update immediately; valid edits are saved
-  into the rig and scene YAML files with comments kept (switch off in the sidebar).
-- **Render & images**: render N frames of the run (scale, samples, device), watch progress,
-  then browse each camera's image, laser masks, depth and segmentation.
+- **Layout**: a WebGL viewer (`tools/gui/layout_view/`) with sliders on the left for each
+  stereo pair (rod centre, rod length = baseline, shared aim point, roll, field of view),
+  single cameras, lasers (position, aim, dot grid or line, fan angles, power) and the wheel
+  (profile, position along the rail, rotation, lateral shift; fixed or a random range).
+  Aim points can be set as "height above the rail + position across the profile". The 3D
+  view, a live view from every camera and the profile-coverage inset (which part of the
+  measured wheel profile each pair sees, with wheel/rail occlusion) update while you drag:
+  all geometry runs in the browser (exact ray casting against the revolved wheel profile and
+  the extruded rails, the same shapes Blender builds). When you release a slider, valid
+  edits are written into the rig and scene YAML files with comments kept (toggle at the top).
+  "Render this view in Blender" path-traces the current viewpoint.
+- **Render & images**: render N frames of the layout exactly as it is in the GUI (a snapshot
+  of the rig and scene goes to `<data_root>/gui/<scene>/configs/`), watch progress, then
+  browse each camera's image, laser masks, depth and segmentation.
 - **3D view**: a Blender render of the whole scene from a free viewpoint with markers for
   the cameras and lasers, showing where the laser line and dots actually land.
 
+The viewer loads three.js from cdn.jsdelivr.net, so the browser needs internet access.
 Renders and 3D views are stored under `<data_root>/gui/<run>/`.
 
 ## Quickstart on a workstation (uv)
@@ -128,7 +135,7 @@ project/                  Open this parent directory to see code and data togeth
         configs/              <scene>/{rig.yaml, scene.yaml, run.yaml}; sweeps/
         assets/profiles/      wheels/*.csv, rails/*.csv (source data, not generated outputs)
         eval/                 Dataset evaluation and image previews (never imports bpy)
-        tools/                config.py (validated edits, sweeps), gui/ (browser app)
+        tools/                config.py (validated edits, sweeps), gui/ (browser app; layout_view/ = WebGL viewer)
         infra/                Docker image, cloud.py, worker, gpucheck, disk report, ec2/ scripts
         tests/                Automated correctness tests
         docs/                 Task specs, status/, datasheets/, previews/
@@ -202,7 +209,7 @@ python3 infra/cloud.py disk --json
 
 ## Dataset layout (format v1)
 
-See the docstring in `synthrig/dataset/__init__.py` for the full listing. In short: each `frames/NNNNNN/` holds per-camera `image.png` (uint16 DN), `depth.exr`, `seg.png`, `laser_<name>.exr` and `laser_<name>_mask.png`. It also holds `stereo_<pair>/{left,right}.png` with `disparity.exr`, plus `dots.npz` and `meta.json` (seed, scene params, rig pose, object classes). `manifest.json` carries the rig hash, so every dataset records exactly which rig produced it. **Write real captures in the same layout (without the GT files), and the eval scripts run on them unchanged.**
+See the docstring in `synthrig/dataset/__init__.py` for the full listing. In short: each `frames/NNNNNN/` holds per-camera `image.png` (uint16 DN), `depth.exr`, `seg.png`, `laser_<name>.exr` and `laser_<name>_mask.png`. For rectified pairs it also holds `stereo_<pair>/{left,right}.png` with `disparity.exr` (unrectified pairs: `calib/pair_<pair>.yml` only), plus `dots.npz` and `meta.json` (seed, scene params, rig pose, object classes). `manifest.json` carries the rig hash, so every dataset records exactly which rig produced it. **Write real captures in the same layout (without the GT files), and the eval scripts run on them unchanged.**
 
 ## Adding an application
 
@@ -227,6 +234,7 @@ Edit `configs/<scene>/rig.yaml`. The schema (`opticsrig/schema.py`) validates ev
 * `frame: track` places every device directly in the track frame (x along track, y left, z up); otherwise poses are relative to the rig and the scene places it.
 * Cameras take `hfov_deg`, `focal_length_mm` or `fx`, OpenCV distortion, and a pose via `look_at`, `euler_xyz_deg` or `R`.
 * Lasers take `wavelength_nm` or `color_rgb`, a pattern (`line` with `fan_deg`; `grid` with `fan_deg` or `pitch_deg`; `random`; `file`), `power_w`, `dot_sigma_mrad` and `enabled`.
+* `stereo_pairs` name two cameras as a pair. `rectify: true` (default) adds rectified images, GT disparity and `calib/stereo_<pair>.yml`; `rectify: false` gives raw images plus `calib/pair_<pair>.yml` (R, T between the cameras) for your own stereo code (used for wheel_tread's strongly converging rod cameras).
 * The GUI (`python3 infra/cloud.py gui`) edits the most important of these with a live layout view.
 * `render_scale` scales every camera consistently, and the exported calibration matches the scaled images.
 

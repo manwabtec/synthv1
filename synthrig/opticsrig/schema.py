@@ -130,23 +130,22 @@ class Camera(_Strict):
 
 
 class StereoPair(_Strict):
-    name: str
-    left: str
-    right: str
-    # cv2.stereoRectify alpha: 0 = only valid pixels, 1 = keep all, -1 = OpenCV default
-    alpha: float = 0.0
+    """Two cameras used as a stereo pair (in track-frame rigs: mounted on one rod).
 
-
-class Rod(_Strict):
-    """Cameras mounted together on one bar (layout/GUI grouping only; no image outputs).
-
-    A rod does not imply rectified stereo: use stereo_pairs for that. In track-frame rigs
-    the GUI moves a rod's cameras together along its axis (default: along the rail, x).
+    rectify: true  -> the dataset also holds rectified images, GT disparity and
+                      calib/stereo_<name>.yml (R, T, R1, R2, P1, P2, Q).
+    rectify: false -> raw camera images only, plus calib/pair_<name>.yml (R, T between the
+                      cameras) for your own stereo processing. Use this when standard
+                      rectification is ill-conditioned (e.g. strongly converging cameras
+                      whose baseline runs along a line of sight).
     """
 
     name: str
-    cameras: list[str] = Field(..., min_length=1)
-    axis: list[float] = Field([1.0, 0.0, 0.0], min_length=3, max_length=3)
+    left: str
+    right: str
+    rectify: bool = True
+    # cv2.stereoRectify alpha: 0 = only valid pixels, 1 = keep all, -1 = OpenCV default
+    alpha: float = 0.0
 
 
 # --------------------------------------------------------------------------- lasers
@@ -240,7 +239,6 @@ class Rig(_Strict):
     frame: Literal["rig", "track"] = "rig"
     cameras: list[Camera]
     stereo_pairs: list[StereoPair] = []
-    rods: list[Rod] = []
     lasers: list[Laser] = []
     lights: list[Light] = []
 
@@ -261,10 +259,6 @@ class Rig(_Strict):
             R = self.camera(p.right).intrinsics
             if (L.width, L.height) != (R.width, R.height):
                 raise ValueError(f"stereo pair {p.name}: cameras must share resolution")
-        for rod in self.rods:
-            for n in rod.cameras:
-                if n not in names:
-                    raise ValueError(f"rod {rod.name}: unknown camera {n}")
         lnames = [l.name for l in self.lasers]
         if len(set(lnames)) != len(lnames):
             raise ValueError("laser names must be unique")

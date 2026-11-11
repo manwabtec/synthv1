@@ -74,3 +74,9 @@ def test_sensor_saturation_and_bits():
     assert out.image.max() == 2 ** s.bit_depth - 1 and out.saturated.all()
     dark = apply_sensor(np.zeros((32, 32, 3)), s, np.random.default_rng(0))
     assert dark.image.mean() < 5
+
+
+def test_unrectified_pairs_are_not_rectified():
+    rig = load_rig("configs/wheel_tread/rig.yaml")
+    assert [p.rectify for p in rig.stereo_pairs] == [False, False]
+    assert RigModel.build(rig).stereo == {}  # no rectification, no rectified outputs

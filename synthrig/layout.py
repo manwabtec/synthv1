@@ -231,22 +231,24 @@ def profile_coverage(rig: RigModel, p: WheelRailParams, meshes: list[Mesh], angl
 
 @dataclass
 class CameraSet:
-    """Cameras on one side of the rail (a stereo pair = one rod)."""
+    """Cameras on one side of the rail (a stereo pair = the cameras on one rod)."""
 
     label: str            # "outside" (field side) or "inside" (gauge side)
     cameras: list[str]
 
 
 def camera_sets(rig: RigModel, p: WheelRailParams) -> list[CameraSet]:
-    """Camera groups by side of the right rail: rods first, then stereo pairs, then any
+    """Camera groups by side of the right rail: stereo pairs (rectified or not), then any
     remaining camera on its own."""
     from .assets.wheelrail import _rail
 
     _, dims = _rail(p.rail_profile)
     rail_c = -(p.gauge_mm * 1e-3 / 2 + dims["gauge_face_u"])
     sets, used = [], set()
-    groups = [list(r.cameras) for r in rig.spec.rods]
-    groups += [[s.left, s.right] for s in rig.spec.stereo_pairs if not any(s.left in g for g in groups)]
+    groups: list[list[str]] = []
+    for s in rig.spec.stereo_pairs:
+        if not any(s.left in g or s.right in g for g in groups):
+            groups.append([s.left, s.right])
     groups += [[c] for c in rig.cameras if not any(c in g for g in groups)]
     for g in groups:
         y = float(np.mean([rig.cameras[c].T_rig_cam[1, 3] for c in g]))

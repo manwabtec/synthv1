@@ -45,8 +45,11 @@ Prerequisite: `docs/TASK_infra.md` (Phase 0) is complete. Follow `AGENTS.md`. Do
   lookup, AGENTS rule 7), i.e. ~0.1-0.17 px on the tread close-up; the test checks that
   bound instead of a flat 0.05 px.
 - Phase 5 (GUI): `tools/gui/app.py` (`python3 infra/cloud.py gui`) with the Layout,
-  Render & images and 3D view tabs; layout geometry in `synthrig/layout.py` (no bpy), 3D
-  overview renderer in `synthrig/render/observer.py`.
+  Render & images and 3D view tabs. Since 2026-11-11 the layout runs in the browser
+  (`tools/gui/layout_view/`, three.js + exact ray casting in `geom.js`, checked against
+  `synthrig/layout.py`: identical profile coverage); Python only exchanges data
+  (`tools/gui/layout_data.py`). 3D overview renderer in `synthrig/render/observer.py`.
+  wheel_tread's rod cameras are unrectified stereo pairs (`rectify: false`).
 
 ---
 

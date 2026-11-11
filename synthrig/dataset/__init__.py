@@ -4,7 +4,8 @@ Layout (FORMAT_VERSION 1):
   <root>/manifest.json            rig name+hash, cameras, stereo pairs, lasers, run config
   <root>/rig.yaml                 validated rig (exact copy of what rendered this)
   <root>/calib/cam_<cam>.yml      OpenCV FileStorage: K, D, image size, T_rig_cam
-  <root>/calib/stereo_<pair>.yml  R, T, R1, R2, P1, P2, Q
+  <root>/calib/stereo_<pair>.yml  R, T, R1, R2, P1, P2, Q        (rectified pairs)
+  <root>/calib/pair_<pair>.yml    R, T, baseline_m                (pairs with rectify: false)
   <root>/calib/perturbed/...      same files with injected calibration error (optional)
   <root>/frames/<NNNNNN>/
       meta.json                   seed, scene params, T_world_rig, object index -> class
@@ -31,7 +32,7 @@ import cv2
 import numpy as np
 import OpenEXR
 
-from ..opticsrig.calib import read_camera_yaml, read_stereo_yaml
+from ..opticsrig.calib import read_camera_yaml, read_pair_yaml, read_stereo_yaml
 
 FORMAT_VERSION = 1
 
@@ -117,6 +118,9 @@ class Dataset:
         cdir = self.root / "calib" / ("perturbed" if perturbed else "")
         self.cameras = {c: read_camera_yaml(cdir / f"cam_{c}.yml") for c in self.manifest["cameras"]}
         self.stereo_calib = {p: read_stereo_yaml(cdir / f"stereo_{p}.yml") for p in self.manifest["stereo_pairs"]}
+        # unrectified pairs (optional manifest key, absent in older datasets)
+        self.pair_calib = {p: read_pair_yaml(cdir / f"pair_{p}.yml")
+                           for p, v in self.manifest.get("camera_pairs", {}).items() if not v["rectified"]}
 
     def frames(self):
         for d in sorted((self.root / "frames").iterdir()):

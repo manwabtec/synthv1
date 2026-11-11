@@ -118,6 +118,17 @@ def test_wheel_rail_acceptance(rendered):
         assert any(c.startswith("wheel_") for c in hit_cls), (d["laser_names"][li], hit_cls)
 
 
+def test_unrectified_pairs_have_pair_calib(rendered):
+    """wheel_tread pairs have rectify: false: calib/pair_<name>.yml with R, T, no stereo_<pair>/."""
+    ds, fr = _frame(rendered["wheel_tread"])
+    assert set(ds.pair_calib) == {"field", "gauge"} and not ds.manifest["stereo"]
+    for name, pc in ds.pair_calib.items():
+        L, R = (ds.cameras[pc[k]]["T_rig_cam"] for k in ("left", "right"))
+        T_r_l = np.linalg.inv(R) @ L
+        assert np.allclose(pc["R"], T_r_l[:3, :3], atol=1e-9) and np.allclose(pc["T"], T_r_l[:3, 3], atol=1e-9)
+        assert not (fr.root / f"stereo_{name}").exists()
+
+
 def test_wheel_tread_acceptance(rendered):
     """Tread + flange >= 40% of cam0 pixels, and dots land on the tread."""
     _, fr = _frame(rendered["wheel_tread"])

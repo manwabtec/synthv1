@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Layout</title>
+<script type="importmap">
+{"imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<style>
+:root {
+  --bg: #0e1117; --panel: #151a23; --panel2: #1b2130; --line: #2a3346; --text: #dde3ee; --muted: #8b97ab;
+  --accent: #4ea1ff; --out: #1f77b4; --out2: #6baed6; --in: #e6550d; --in2: #fdae6b; --warn: #eab308; --err: #ef4444;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 12px/1.35 "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+#app { display: flex; height: 100vh; width: 100vw; }
+#panel { width: 340px; min-width: 280px; max-width: 520px; resize: horizontal; overflow-y: auto; overflow-x: hidden;
+  background: var(--panel); border-right: 1px solid var(--line); padding: 6px 10px 40px; }
+#status { font-size: 11px; color: var(--muted); padding: 2px 0 6px; min-height: 18px; }
+#status.ok { color: #22c55e; } #status.err { color: var(--err); } #status.warn { color: var(--warn); }
+details { border: 1px solid var(--line); border-radius: 6px; margin: 6px 0; background: var(--panel2); }
+details > summary { cursor: pointer; padding: 6px 8px; font-weight: 600; font-size: 12.5px; list-style: none; display: flex; align-items: center; gap: 6px; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: "\25B8"; color: var(--muted); font-size: 10px; }
+details[open] > summary::before { content: "\25BE"; }
+details .body { padding: 2px 8px 8px; }
+.chip { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.sub { color: var(--muted); font-size: 11px; margin: 8px 0 2px; text-transform: uppercase; letter-spacing: .04em; }
+.sl { margin: 5px 0 0; }
+.sl .lab { display: flex; justify-content: space-between; align-items: center; color: var(--muted); gap: 6px; }
+.sl .lab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sl input[type=number] { width: 74px; background: #0f1420; color: var(--text); border: 1px solid var(--line);
+  border-radius: 3px; padding: 1px 4px; font: inherit; text-align: right; font-variant-numeric: tabular-nums; }
+.sl input[type=range] { width: 100%; margin: 2px 0 0; accent-color: var(--accent); height: 16px; }
+.sl.disabled { opacity: .45; pointer-events: none; }
+.row { display: flex; gap: 6px; align-items: center; margin: 5px 0; }
+.row > * { flex: 1; }
+select, button { background: #0f1420; color: var(--text); border: 1px solid var(--line); border-radius: 4px;
+  padding: 3px 6px; font: inherit; cursor: pointer; }
+button:hover, select:hover { border-color: var(--accent); }
+button.on { background: #1d3557; border-color: var(--accent); }
+label.tg { display: flex; gap: 6px; align-items: center; color: var(--text); cursor: pointer; margin: 4px 0; }
+.read { color: var(--muted); font-size: 11px; margin: 4px 0 0; font-variant-numeric: tabular-nums; }
+#main { position: relative; flex: 1; min-width: 0; }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+#labels div { position: absolute; transform: translate(-50%, -130%); font-size: 11px; padding: 0 4px; border-radius: 3px;
+  background: rgba(14,17,23,.75); white-space: nowrap; }
+#toolbar { position: absolute; left: 8px; top: 8px; display: flex; flex-wrap: wrap; gap: 4px; max-width: 60%; }
+#toolbar button { background: rgba(21,26,35,.88); font-size: 11.5px; }
+#inset { position: absolute; right: 8px; top: 8px; width: 460px; max-width: 45%; background: rgba(21,26,35,.93);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+#inset .hdr { display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+#inset .hdr button { padding: 0 6px; }
+#inset canvas { width: 100%; height: 230px; display: block; margin-top: 4px; }
+#inset.min canvas, #inset.min #metrics { display: none; }
+#metrics { font-size: 11.5px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+#metrics table { width: 100%; border-collapse: collapse; }
+#metrics td { padding: 1px 4px; border-top: 1px solid var(--line); }
+#metrics td.n { text-align: right; }
+#strip { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none; }
+#strip div.cv { position: absolute; border: 1px solid var(--line); }
+#strip div.cv > span { position: absolute; left: 0; top: 0; font-size: 11px; background: rgba(14,17,23,.8); padding: 0 4px; }
+#err { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); max-width: 70%; color: var(--err);
+  background: var(--panel); border: 1px solid var(--err); border-radius: 6px; padding: 12px; display: none; }
+#help { color: var(--muted); font-size: 11px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="panel">
+    <div id="status">loading ...</div>
+    <div id="controls"></div>
+    <div id="help">Drag in the 3D view to orbit, right-drag to pan, scroll to zoom. Positions in mm,
+      track frame: x along the track, y to the left (wheel on the right rail, y &lt; 0), z up from the rail top.</div>
+  </aside>
+  <main id="main">
+    <canvas id="gl"></canvas>
+    <div id="labels"></div>
+    <div id="strip"></div>
+    <div id="toolbar"></div>
+    <div id="inset">
+      <div class="hdr"><span id="inset-title">Profile coverage</span><button id="inset-min" title="minimise">&ndash;</button></div>
+      <canvas id="prof"></canvas>
+      <div id="metrics"></div>
+    </div>
+    <div id="err"></div>
+  </main>
+</div>
+<script type="module" src="./layout.js"></script>
+<script>
+  // shown if the module (or three.js from the CDN) fails to load
+  window.addEventListener("error", (e) => {
+    const el = document.getElementById("err");
+    el.style.display = "block";
+    el.textContent = "Layout view failed to load: " + (e.message || e.target?.src || "unknown error") +
+      ". It loads three.js from cdn.jsdelivr.net, so the browser needs internet access.";
+  }, true);
+</script>
+</body>
+</html>

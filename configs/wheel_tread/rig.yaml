@@ -1,12 +1,12 @@
 # wheel_tread layout, devices in the TRACK frame (x along track, y left, z up, metres).
 # The wheel stands on the right rail (y < 0) at x = 0; rail top is z = 0.
-# Two camera rods run parallel to the rail (along x), just above rail-top height, ahead
+# Two camera rods (one stereo pair each) run parallel to the rail (along x), just above rail-top height, ahead
 # of the wheel, looking up at the tread 2.5 in (64 mm) above the rail (x = 0.232):
 #   field side (outside the rail, rim side):  cam0/cam1 on y = -0.95, green dot laser above
 #   gauge side (inside the rail, flange side): cam2/cam3 on y = -0.55, red line laser above
 # The rod length is the camera spacing; edit it with the GUI's rod sliders.
 # Example layout, not a design.
-name: wheel_tread_rods_v1
+name: wheel_tread_pairs_v1
 version: 1
 frame: track
 description: >
@@ -60,13 +60,13 @@ cameras:
       exposure: 1.0
       bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}
 
-# Rods: cameras on one bar along the rail (the GUI's rod sliders move them together).
-# No stereo_pairs: with the cameras spread along the rail and converging on one nearby
-# spot, the baseline runs almost along a line of sight, so standard rectification is
-# ill-conditioned. Add pairs only for side-by-side cameras.
-rods:
-  - {name: field, cameras: [cam0, cam1]}
-  - {name: gauge, cameras: [cam2, cam3]}
+# One stereo pair per rod (the GUI's pair sliders move a rod's cameras together).
+# rectify: false = raw images + calib/pair_<name>.yml (R, T) for your own stereo code:
+# the cameras converge strongly on a nearby spot, so standard rectification is
+# ill-conditioned here.
+stereo_pairs:
+  - {name: field, left: cam0, right: cam1, rectify: false}
+  - {name: gauge, left: cam3, right: cam2, rectify: false}
 
 lasers:
   - name: green_dots                # field side, above the field rod

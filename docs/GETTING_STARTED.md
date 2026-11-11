@@ -28,58 +28,82 @@ python3 infra/cloud.py gui
 
 Open **http://localhost:8501** in your browser. On EC2 through VS Code, the port is
 forwarded automatically (check the "Ports" panel if the page does not open). Ctrl+C in
-the terminal stops the GUI.
+the terminal stops the GUI. The layout view loads three.js from cdn.jsdelivr.net, so the
+browser needs internet access.
 
-In the sidebar, pick the scene: **wheel_rail** (whole wheel on the rail) or
-**wheel_tread** (close-up of the tread).
+At the top, pick the scene: **wheel_tread** (close-up of the tread, the default) or
+**wheel_rail** (whole wheel on the rail). The page is dark and full-width; settings are on
+the left, the view takes the rest.
 
 ## 3. Layout tab: move things and see the effect immediately
 
-Everything is a slider; changes apply when you release it.
+Everything updates **while you drag** a slider (it all runs in your browser). When you
+release it, the change is saved into `configs/<scene>/rig.yaml` / `scene.yaml` (the status
+line at the top of the left panel says so). You can also type a value in the box next to a
+slider.
 
-- **Wheel**: position along the rail, rotation, lateral shift. "fixed" = one value,
-  "random range" = a new value every rendered frame.
-- **Rods** (one per side of the rail): move a rod's cameras together. Rod centre x/y/z,
-  rod length (camera spacing along the rail), shared aim point, roll and field of view.
-  "Aim at" snaps the aim point to the tread contact, flange tip, rail head or wheel centre.
-- **Individual cameras**: fine-tune one camera (position, aim point, roll, field of view).
-- **Lasers**: position, aim point, pattern (line or dots), fan angle, line orientation, power.
+Left panel, top to bottom:
 
-Coordinates are metres in the track frame: **x** along the track, **y** sideways
-(+ = towards the left rail; the wheel is on the right rail at about y = -0.75; the field
-side, outside the rail, is y < -0.79, the gauge side, inside, is y > -0.72), **z** up
-(0 = top of rail).
+- **Pair field / Pair gauge**: one stereo pair per rod (blue = outside the rail, field side;
+  orange = inside, gauge side). Rod centre x/y/z, **rod length = baseline**, the shared aim
+  point, roll and field of view move both cameras together. Set the aim as
+  **height above the rail** (e.g. 63.5 mm = 2.5 in) and **position across the profile**
+  (mm from the flange back face), or as plain x/y/z. The readout shows range to the aim,
+  look-up angle, convergence angle and mm per pixel.
+- **Laser ...**: on/off, position, aim (same two ways), pattern (dot grid: rows, columns,
+  two fan angles; line: fan angle, orientation), power.
+- **Wheel**: profile, position along the rail, rotation, lateral shift, each fixed or
+  "random every frame, between ... and ...". The cameras stay where they are when the
+  wheel moves (the rig is fixed in the track frame).
+- **Single camera**: fine-tune one camera.
+- **Display**: frustums, laser fans, labels, the camera-view strip and its size.
 
-The 3D view (drag to rotate, scroll to zoom) and the small camera views below it update
-straight away. The **inset in the top right of the 3D view** shows the wheel profile and
-which part of it each camera set sees in the section the cameras aim at: blue = outside
-the rail (field side), orange = inside (gauge side); thick = seen by both cameras of the
-set, thin = by only one; the percentages are of the whole profile. Occlusion by the
-flange is included.
+Positions are mm in the track frame: **x** along the track, **y** sideways (+ = towards the
+left rail; the wheel is on the right rail at about y = -750; field side y < -790, gauge side
+y > -720), **z** up (0 = top of rail).
 
-The camera views show what each camera roughly sees and the percentage of each laser that
-lands in its image. Edits are saved into `configs/<scene>/rig.yaml` and `scene.yaml`
-(switch "Save edits" off in the sidebar to just experiment).
+In the view: drag to orbit, right-drag to pan, scroll to zoom; the buttons at the top left
+jump to preset viewpoints. **Render this view in Blender** path-traces exactly that viewpoint
+(see the 3D view tab after a few seconds).
+
+- **Bottom strip**: what each camera sees (lit by the rig's strobes; lens distortion not
+  drawn), with the % of each laser's points on the wheel that camera sees.
+- **Inset, top right**: the wheel profile in the section the field pair aims at, drawn where
+  it meets the rail. Blue/orange lines above it = seen by the outside/inside pair (thick =
+  both cameras of the pair, thin = one); yellow = seen by no camera. The table gives the %
+  of the profile each pair covers, the covered range in mm from the flange back, and the
+  overlap between the two sides.
+
+Laser points: bright = seen by at least one camera, dark = by none.
 
 ## 4. Render & images tab
 
 Set frames (start with 1), scale (0.5 is quick; 1.0 = full resolution), samples (32),
-then **Render**. When it finishes, the images appear: switch "Show" between camera
+then **Render**. It renders the layout exactly as it is in the GUI, saved or not. When it finishes, the images appear: switch "Show" between camera
 images, laser masks, depth and segmentation.
 
 ## 5. 3D view tab
 
-Choose a viewpoint (look-at point, azimuth, elevation, distance) and press
-**Render 3D view** to see the whole scene rendered by Blender, with the cameras (blue)
+Use **Render this view in Blender** in the Layout tab, or choose a viewpoint here
+(look-at point, azimuth, elevation, distance) and press **Render 3D view** to see the whole scene rendered by Blender, with the cameras (blue)
 and lasers (their colour) drawn as markers and the laser line/dots where they really land.
 
-## 6. Undo and keep results
+## 6. Stereo pairs
+
+Each rod's two cameras form a stereo pair (`stereo_pairs` in `rig.yaml`, `rectify: false`).
+A rendered dataset then has the raw images of both cameras, each camera's calibration
+(`calib/cam_<name>.yml`: K, distortion, pose) and `calib/pair_<pair>.yml` (R, T from left
+to right camera) for your own stereo processing. No rectified images are made for them.
+
+## 7. Undo and keep results
 
 - Every GUI edit is a plain change to the YAML files: `git diff configs/` shows it,
-  `git checkout configs/<scene>/` undoes it, `git commit` keeps it.
+  `git checkout configs/<scene>/` undoes it, `git commit` keeps it. **Reload files** (top)
+  re-reads them into the GUI.
+- Switch "Save edits to the YAML files" off to experiment without touching the files.
 - Renders made from the GUI are in `<data root>/gui/<scene>/` (`/app/synthrig/gui/` on EC2).
 
-## 7. Without the GUI
+## 8. Without the GUI
 
 ```bash
 python3 infra/cloud.py exec -- python -m synthrig configs/wheel_tread/run.yaml --frames 2 --scale 0.25

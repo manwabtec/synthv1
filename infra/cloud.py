@@ -372,7 +372,7 @@ def cmd_gui(a: argparse.Namespace) -> int:
     so layout edits are saved into this checkout. Listens on 127.0.0.1 only."""
     config = load_config()
     print(f"GUI: open http://localhost:{a.port}  (on EC2, VS Code forwards the port; Ctrl+C stops)")
-    cmd = ["streamlit", "run", "tools/gui/app.py", "--server.address", "0.0.0.0",
+    cmd = ["streamlit", "run", "tools/gui/app.py", "--server.address", "0.0.0.0", "--theme.base", "dark",
            "--server.port", "8501", "--server.headless", "true", "--browser.gatherUsageStats", "false"]
     return run(container(config, cmd, gpu=not a.no_gpu, name="synthrig-gui", mount_code=True,
                          interactive=sys.stdin.isatty(), ports=[f"127.0.0.1:{a.port}:8501"]),

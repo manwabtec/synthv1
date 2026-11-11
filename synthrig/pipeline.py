@@ -20,7 +20,7 @@ from .assets.classes import CLASSES
 from .dataset import FORMAT_VERSION, write_exr, write_png
 from .paths import output_path
 from .opticsrig import RigModel, load_rig
-from .opticsrig.calib import perturb_camera, stereo_calib, write_camera_yaml, write_stereo_yaml
+from .opticsrig.calib import perturb_camera, stereo_calib, write_camera_yaml, write_pair_yaml, write_stereo_yaml
 from .sensor import apply_sensor
 from .stereo import gt_disparity, rectify_maps, rectify_pair, rectify_points
 
@@ -201,6 +201,9 @@ class Pipeline:
             "rig_name": rig.spec.name, "rig_hash": rig.spec.hash(), "render_scale": rig.scale,
             "cameras": list(rig.cameras), "stereo_pairs": list(rig.stereo), "lasers": list(rig.lasers),
             "stereo": {n: {"left": s.left, "right": s.right} for n, s in rig.stereo.items()},
+            # every declared pair, rectified or not (unrectified: calib/pair_<name>.yml only)
+            "camera_pairs": {p.name: {"left": p.left, "right": p.right, "rectified": p.rectify}
+                             for p in rig.spec.stereo_pairs},
             "scene": self.cfg.scene, "run_config": self.cfg.model_dump(mode="json"),
             "units": {"length": "m", "disparity": "px", "depth": "planar z along optical axis"},
             "generator_env": {**generator_env(self.cfg.render.device), **(extra_env or {})},
@@ -212,6 +215,9 @@ class Pipeline:
             write_camera_yaml(out / "calib" / f"cam_{n}.yml", c)
         for n, s in rig.stereo.items():
             write_stereo_yaml(out / "calib" / f"stereo_{n}.yml", s)
+        for p in rig.spec.stereo_pairs:
+            if not p.rectify:
+                write_pair_yaml(out / "calib" / f"pair_{p.name}.yml", p.name, rig.cameras[p.left], rig.cameras[p.right])
         pc = self.cfg.calib_perturbation
         if pc.enabled:
             pdir = out / "calib" / "perturbed"
@@ -222,6 +228,9 @@ class Pipeline:
             for n, c in pert.items():
                 write_camera_yaml(pdir / f"cam_{n}.yml", c)
             for p in rig.spec.stereo_pairs:
+                if not p.rectify:
+                    write_pair_yaml(pdir / f"pair_{p.name}.yml", p.name, pert[p.left], pert[p.right])
+                    continue
                 write_stereo_yaml(pdir / f"stereo_{p.name}.yml", stereo_calib(p, pert[p.left], pert[p.right]))
             (pdir / "perturbation.json").write_text(pc.model_dump_json(indent=2))
 

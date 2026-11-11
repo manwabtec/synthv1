@@ -103,7 +103,7 @@ and its IAM role are managed by the cloud team.
 4. Fails unless a GPU device is enabled and the GPU render is faster.
 
 It writes `diagnostics/gpucheck/result.json`. `--device OPTIX|CUDA|GPU|CPU` is accepted
-by `run.py`, the worker and `submit`.
+by `python -m synthrig`, the worker and `submit`.
 
 **Result (2026-11-10, g5.xlarge):** OptiX on the A10G took 8.7 s; CPU took 55.2 s (6.3×).
 This step found a bug: `BlenderBackend.new_frame` called `read_factory_settings`, which
@@ -134,7 +134,7 @@ worker.py --config configs/runs/<x>.yaml --run-dir datasets/<scene>/<rig_hash>/<
 - **Logs** go to stdout (`docker logs`) and to `logs/shard_<k>.log`.
 - **Changes to `synthrig`** (additive):
   - `Pipeline(write_header=False)` and a public `Pipeline.write_header()`.
-  - `run.py --header-only`.
+  - `python -m synthrig --header-only`.
   - A `generator_env` block in `manifest.json`: Blender and Python versions, git sha and
     dirty flag, `allow_dirty`, image ID, render device, and instance type (from IMDSv2,
     or `local`).
@@ -143,7 +143,7 @@ worker.py --config configs/runs/<x>.yaml --run-dir datasets/<scene>/<rig_hash>/<
     scale differ.
 
 **Accept (2026-11-10):**
-- A 2-shard × 4-frame `submit` produces the same frame set as a single `run.py` run.
+- A 2-shard × 4-frame `submit` produces the same frame set as a single `python -m synthrig` run.
   `meta.json` (minus timings), `dots.npz`, depth, segmentation, disparity and masks are
   byte-identical. Radiance differs by OptiX float noise (≤ 4e-4, occasionally 1 DN in an
   image).

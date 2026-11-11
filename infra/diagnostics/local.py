@@ -32,7 +32,7 @@ def check(*, gpu: bool = False, render: bool = False) -> None:
         subprocess.run(["nvidia-smi"], check=True)
         subprocess.run([sys.executable, "-m", "synthrig.render.devices"], cwd=CODE_ROOT, check=True)
     if render:
-        command = [sys.executable, str(CODE_ROOT / "run.py"),
+        command = [sys.executable, "-m", "synthrig",
                    str(CODE_ROOT / "configs/runs/app1_demo.yaml"), "--frames", "1",
                    "--scale", "0.125", "--samples", "4", "--out", "diagnostics/smoke",
                    "--device", "GPU" if gpu else "CPU"]

@@ -47,7 +47,7 @@ This repo renders synthetic images for a FIXED physical rig: 4 cameras (a stereo
 - After Phase 0, any render or test can be run in the container: `python3 infra/cloud.py image test`, or `python3 infra/cloud.py exec --mount-code -- <cmd>` for uncommitted code.
 - For every new or changed scene, render a preview and look at it:
   ```
-   python run.py configs/runs/<scene>.yaml --frames 2 --scale 0.25 --samples 16 --out datasets/<scene>
+   python -m synthrig configs/runs/<scene>.yaml --frames 2 --scale 0.25 --samples 16 --out datasets/<scene>
    python eval/preview.py ../data/datasets/<scene> --out ../data/previews/<scene>.png
   ```
   Commit the preview to `docs/previews/` only when asked.

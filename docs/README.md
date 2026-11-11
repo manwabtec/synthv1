@@ -8,5 +8,5 @@
 - [Scene previews](previews/README.md): checked-in documentation images, not runtime output storage.
 
 Project setup and commands are in the [repository README](../README.md).
-Agent rules remain in [AGENTS.md](../AGENTS.md); the root CLAUDE.md delegates to it.
-Python metadata, the dependency lock and tool discovery files stay at the repository root.
+Agent rules are in [AGENTS.md](../AGENTS.md); `.claude/CLAUDE.md` and `.github/copilot-instructions.md` point to it.
+Only README, LICENSE, AGENTS.md, pyproject.toml and uv.lock (plus git files) stay at the repository root.

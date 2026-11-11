@@ -14,7 +14,7 @@ Everything that needs Blender runs inside the Docker image.
   python3 infra/cloud.py status --run datasets/<scene>/<rig_hash>/<run_id>
   python3 infra/cloud.py stop datasets/<scene>/<rig_hash>/<run_id>
   python3 infra/cloud.py resume datasets/<scene>/<rig_hash>/<run_id>
-  python3 infra/cloud.py exec -- python run.py ...   # any command inside the container
+  python3 infra/cloud.py exec -- python -m synthrig ...   # any command inside the container
 """
 from __future__ import annotations
 
@@ -342,7 +342,7 @@ def cmd_image(a: argparse.Namespace) -> int:
     if a.no_render:
         return 0
     out = "diagnostics/image_test"
-    run(container(config, ["python", "run.py", "configs/runs/app1_demo.yaml", "--frames", "1", "--scale",
+    run(container(config, ["python", "-m", "synthrig", "configs/runs/app1_demo.yaml", "--frames", "1", "--scale",
                            "0.125", "--samples", "4", "--device", "CPU", "--out", out], gpu=False))
     run(container(config, ["python", "eval/preview.py", f"{CONTAINER_DATA}/{out}", "--frame", "0",
                            "--out", f"{CONTAINER_DATA}/previews/image_test.png"], gpu=False))
@@ -396,7 +396,7 @@ def cmd_submit(a: argparse.Namespace) -> int:
         if value is not None:
             overrides += [flag, str(value)]
     env = {"SYNTHRIG_ALLOW_DIRTY": str(bool(reasons)).lower()}
-    run(container(config, ["python", "run.py", cfg, "--header-only", "--frames", str(a.frames), "--out", rel,
+    run(container(config, ["python", "-m", "synthrig", cfg, "--header-only", "--frames", str(a.frames), "--out", rel,
                            *overrides], gpu=a.device != "CPU", env=env))
     spec = {"config": cfg, "frames": a.frames, "shards": a.shards, "overrides": overrides,
             "gpu": a.device != "CPU", "env": env, "image_id": info["id"]}

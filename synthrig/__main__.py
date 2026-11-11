@@ -1,22 +1,17 @@
-#!/usr/bin/env python3
-"""Render a synthetic dataset.
+"""Render a synthetic dataset (run from the repository root).
 
-  python run.py configs/runs/app1_demo.yaml
-  python run.py configs/runs/app1_demo.yaml --frames 2 --scale 0.25 --samples 16 --out datasets/preview
-  python run.py configs/runs/app1_demo.yaml --header-only --out datasets/run   # manifest/calib only
+  python -m synthrig configs/runs/app1_demo.yaml
+  python -m synthrig configs/runs/app1_demo.yaml --frames 2 --scale 0.25 --samples 16 --out datasets/preview
+  python -m synthrig configs/runs/app1_demo.yaml --header-only --out datasets/run   # manifest/calib only
 """
 import argparse
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from synthrig.pipeline import Pipeline, RunConfig  # noqa: E402
-from synthrig.paths import output_path  # noqa: E402
+from synthrig.paths import output_path
+from synthrig.pipeline import Pipeline, RunConfig
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(prog="python -m synthrig", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("config")
     ap.add_argument("--frames", type=int)
     ap.add_argument("--start", type=int, help="first frame index (shard across machines)")

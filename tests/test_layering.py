@@ -30,9 +30,9 @@ def test_access_module_uses_repository_config():
     assert CONFIG_PATH == CODE_ROOT / "infra/config.yaml"
 
 
-def test_old_access_launcher_still_has_help():
+def test_access_check_has_help():
     result = subprocess.run(
-        [sys.executable, "infra/test_access.py", "--help"],
+        [sys.executable, "-m", "infra.access.check", "--help"],
         cwd=CODE_ROOT, capture_output=True, text=True,
     )
     assert result.returncode == 0, result.stderr

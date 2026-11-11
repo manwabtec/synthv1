@@ -88,7 +88,7 @@ python3 infra/cloud.py exec --mount-code -- pytest -q                           
   - Restart up to 3 times on failure.
   - Stop cleanly if free space drops below `min_free_gb`.
 - **Paths in the container:** inside the image the data root is `/data` and scratch is
-  `/scratch`. `run.py --out` paths are relative to `/data`.
+  `/scratch`. `python -m synthrig --out` paths are relative to `/data`.
 
 ## Disk space
 

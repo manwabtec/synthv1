@@ -57,7 +57,7 @@ On the rendering workstation:
 ```bash
 uv sync --extra render
 uv run python infra/cloud.py local-check --gpu --render
-uv run python run.py configs/runs/app1_demo.yaml --device GPU --frames 2 --scale 0.25 --samples 16
+uv run python -m synthrig configs/runs/app1_demo.yaml --device GPU --frames 2 --scale 0.25 --samples 16
 ```
 
 Generated outputs default to `../data/`, outside Git. Relative `output` and
@@ -80,22 +80,23 @@ The Docker image installs Blender 4.2 and the `render` dependency group from `uv
 
 ```text
 project/                  Open this parent directory to see code and data together
-    code/                   Git repository, including .git and this README
-        infra/                docker/, ec2/, storage/ (disk space), worker, cloud.py
-        synthrig/             opticsrig/, sensor/, render/, dataset/, stereo.py
-        scenes/               Final environment plugins; never define hardware here
+    code/                   Git repository
+        README.md, LICENSE, AGENTS.md (agent rules), pyproject.toml, uv.lock   <- only files in the root
+        synthrig/             The simulator package: opticsrig/, sensor/, render/, dataset/,
+                              stereo.py, pipeline.py; `python -m synthrig` is the render CLI
+        scenes/               Environment plugins (bpy); never define hardware here
         configs/              opticsrigs/, runs/, experiments/, scenes/, materials/
         assets/               profiles/, textures/ (source assets, not generated outputs)
+        eval/                 Dataset evaluation and image previews (never imports bpy)
         tools/                Validated config editing and parameter-case generation
-        eval/                 Dataset evaluation and image previews
-        docs/datasheets/      Hardware sources and provenance, not duplicate runtime values
+        infra/                Docker image, cloud.py, worker, gpucheck, disk report, ec2/ scripts
         tests/                Automated correctness tests
+        docs/                 Task specs, status, datasheets/, previews/, reference/
+        .github/              CI workflow, Copilot instructions
+        .claude/              Claude Code instructions (imports AGENTS.md)
+        .secrets/             Git credentials; ignored by git and Docker (see its README)
     data/                   Local outputs (on EC2: /app/synthrig on EBS); never committed
-        datasets/
-        previews/
-        scenes/
-        cache/
-        logs/
+        datasets/  previews/  diagnostics/  logs/  cache/  scratch/
 ```
 
 `synthrig/dataset/` is format/read/write code, not generated data. Hardware values

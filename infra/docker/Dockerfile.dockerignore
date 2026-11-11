@@ -11,3 +11,4 @@ data
 infra/config.yaml
 docs/reference
 docs/previews
+.secrets

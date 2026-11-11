@@ -1,21 +1,23 @@
-out/
+# Generated data lives outside the repo (../data, or /app/synthrig on EC2).
 data/
+out/
+*.png
+!docs/previews/*.png
 *.blend
 *.blend1
+
+# Python / tooling
 __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
-*.png
-!docs/*.png
-!docs/previews/*.png
 
-# Local AWS/Terraform configuration and generated state.
+# Local, machine-specific configuration (see infra/config.example.yaml)
 infra/config.yaml
-infra/terraform.tfvars.json
-infra/**/.terraform/
-infra/**/*.tfstate
-infra/**/*.tfstate.*
-infra/**/*.tfplan
-infra/**/crash.log
-!logs/ec2/**/*.png
+
+# Credentials (git push token / deploy key). Only the README is tracked.
+.secrets/*
+!.secrets/README.md
+
+# Per-user Claude Code settings (project instructions in .claude/CLAUDE.md are tracked)
+.claude/settings.local.json

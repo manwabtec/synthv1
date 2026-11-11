@@ -13,15 +13,14 @@
 # gpucheck, a 2-frame GPU demo render via the image, and `cloud.py status`.
 #
 # Every step runs even if an earlier one fails (dependent steps are SKIPPED).
-# Output: logs/ec2/<UTC-time>_<commit>/
+# Output: <data_root>/logs/ec2/<UTC-time>_<commit>/   (data_root from infra/config.yaml)
 #   summary.txt        one PASS/FAIL/SKIP line per step + timings  <- read this first
 #   run_info.txt       branch, commit, host, time
 #   NN_<step>.log      full output of each step
 #   preview_app1.png   demo render preview (if the render succeeded)
-# Then commit + push the log with:  bash infra/ec2/push_log.sh
 #
-# Writes only: the Docker image, the data root's diagnostics/ and previews/, logs/ec2/
-# (and .venv/ with --uv).
+# Writes only: the Docker image and the data root's diagnostics/, previews/ and
+# logs/ec2/ (and .venv/ with --uv). Nothing is written into the git checkout.
 # It never starts AWS resources and never prints credentials.
 
 set -uo pipefail
@@ -55,7 +54,9 @@ export NO_COLOR=1 UV_NO_PROGRESS=1 PYTHONUNBUFFERED=1
 
 SHA="$(git rev-parse --short HEAD)"
 RUN_ID="$(date -u +%Y%m%d-%H%M%SZ)_${SHA}"
-LOG_DIR="$CODE_ROOT/logs/ec2/$RUN_ID"
+DATA_ROOT="$(python3 -B -c 'import sys; sys.path.insert(0, "."); from infra.cloud import load_config; print(load_config()["data_root"])')" || {
+  echo "Could not read the data root from infra/config.yaml (see infra/cloud.py config)."; exit 2; }
+LOG_DIR="$DATA_ROOT/logs/ec2/$RUN_ID"
 mkdir -p "$LOG_DIR"
 SUMMARY="$LOG_DIR/summary.txt"
 STEP_NO=0
@@ -189,17 +190,17 @@ image_test()  { python3 -B infra/cloud.py image test; }
 gpucheck()    { python3 -B infra/cloud.py gpucheck; }
 image_demo() {
   local out="diagnostics/ec2_${RUN_ID}"
-  python3 -B infra/cloud.py exec -- python run.py configs/runs/app1_demo.yaml --device GPU \
+  python3 -B infra/cloud.py exec -- python -m synthrig configs/runs/app1_demo.yaml --device GPU \
       --frames 2 --scale 0.25 --samples 16 --out "$out" || return 1
   python3 -B infra/cloud.py exec --no-gpu -- python eval/preview.py "/data/$out" --frame 0 \
       --out "/data/previews/ec2_${RUN_ID}.png" || return 1
-  cp "$(python3 -B -c 'import sys; sys.path.insert(0, "."); from infra.cloud import load_config; print(load_config()["data_root"])')/previews/ec2_${RUN_ID}.png" "$LOG_DIR/preview_app1.png"
+  cp "$DATA_ROOT/previews/ec2_${RUN_ID}.png" "$LOG_DIR/preview_app1.png"
 }
 overall_status() { python3 -B infra/cloud.py status; }
 
 demo_render() {
   local out="diagnostics/ec2_${RUN_ID}"
-  uv run python run.py configs/runs/app1_demo.yaml --device GPU \
+  uv run python -m synthrig configs/runs/app1_demo.yaml --device GPU \
       --frames 2 --scale 0.25 --samples 16 --out "$out" || return 1
   uv run python eval/preview.py "../data/$out" --frame 0 --out "$LOG_DIR/preview_app1.png"
 }
@@ -243,6 +244,5 @@ for r in "${RESULT[@]}"; do [ "$r" = PASS ] || FAILS=$((FAILS + 1)); done
 } | tee -a "$SUMMARY"
 
 echo
-echo "Log folder: logs/ec2/$RUN_ID"
-echo "Send it back:  bash infra/ec2/push_log.sh"
+echo "Log folder: $LOG_DIR"
 [ "$FAILS" = 0 ]

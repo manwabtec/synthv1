@@ -104,7 +104,7 @@ def run_shard(render: Callable[[int], Path], run_dir: Path, indices: Iterable[in
 def _check_header(run_dir: Path, rig_hash: str, scale: float) -> None:
     manifest = run_dir / "manifest.json"
     if not manifest.is_file():
-        raise SystemExit(f"{manifest} is missing: write the header first (cloud.py submit or run.py --header-only)")
+        raise SystemExit(f"{manifest} is missing: write the header first (cloud.py submit or python -m synthrig --header-only)")
     m = json.loads(manifest.read_text())
     if m.get("rig_hash") != rig_hash or abs(float(m.get("render_scale", -1)) - scale) > 1e-9:
         raise SystemExit(f"{manifest} was written for rig {m.get('rig_hash')} at scale {m.get('render_scale')}, "

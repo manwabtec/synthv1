@@ -106,7 +106,7 @@ def render_overview(config: Path, out: Path, frame: int = 0, target=(0.0, -0.75,
     rig = RigModel.build(load_rig(cfg.rig), 1.0)
     backend = BlenderBackend(RenderSettings(samples=samples, device="CPU" if device == "CPU" else "GPU"))
     scene = load_scene(cfg.scene, cfg.scene_params, cfg.scene_config)
-    _params, ctx = build_frame(backend, rig, scene, cfg.seed, frame)
+    _params, ctx = build_frame(backend, rig, scene, cfg.seed, frame, cfg.sequence_cfg)
     if markers:
         add_device_markers(rig, ctx.T_world_rig, frustum_m=0.35)
     sc = bpy.context.scene

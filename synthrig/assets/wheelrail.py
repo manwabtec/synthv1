@@ -29,6 +29,9 @@ class WheelRailParams(BaseModel):
     wheel_profile: str = "AAR_2A_ref_wide"
     rail_profile: str = "rail_136re_placeholder"
     wheel_section: WheelSection = WheelSection()
+    speed_mps: float = Field(0.0, description="sequence mode: wheel rolls along +x at this speed (no slip)")
+    surface_modifiers: list[dict] = Field(default_factory=list, description="hook for tread defects "
+                                          "(flats, shelling, ...); not implemented yet, must stay empty")
     # --- track (PLACEHOLDER values typical of North American freight track)
     gauge_mm: float = Field(1435.1, description="between gauge faces, 16 mm below top of rail")
     back_to_back_mm: float = Field(1346.2, description="PLACEHOLDER: flange back face to back face")
@@ -142,6 +145,14 @@ def wheel_to_track(p: WheelRailParams) -> np.ndarray:
     T[:3, :3] = [[c, 0, s], [0, 1, 0], [-s, 0, c]]
     T[:3, 3] = wheel_origin(p)
     return T
+
+
+def rolled(p: WheelRailParams, t_s: float) -> WheelRailParams:
+    """The wheel `t_s` seconds later, rolling without slip along +x at p.speed_mps."""
+    dx = p.speed_mps * t_s
+    R = p.wheel_section.tape_diameter_mm / 2000.0
+    return p.model_copy(update={"wheel_x_m": p.wheel_x_m + dx,
+                                "wheel_rot_deg": p.wheel_rot_deg + float(np.degrees(dx / R))})
 
 
 def key_points(p: WheelRailParams) -> dict[str, list[float]]:

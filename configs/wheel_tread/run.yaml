@@ -1,0 +1,20 @@
+# wheel_tread run. For a rolling sequence set `mode: sequence` (frames come in sequences of
+# sequence.length at sequence.fps; the wheel moves at scene speed_mps).
+rig: rig.yaml
+scene: wheel_tread
+scene_config: scene.yaml
+scene_params: {}
+output: datasets/wheel_tread
+frames: 4
+seed: 1
+mode: independent
+sequence: {length: 30, fps: 30}
+render:
+  samples: 32
+  render_scale: 0.5
+  device: GPU
+outputs:
+  save_radiance: true
+  save_laser_components: true
+calib_perturbation:
+  enabled: false

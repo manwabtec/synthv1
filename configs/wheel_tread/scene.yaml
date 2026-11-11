@@ -1,0 +1,13 @@
+# wheel_tread scene: same parameters as wheel_rail (WheelRailParams). Fixed values or
+# sampling specs {uniform: [lo, hi]}, {normal: [mean, sd]}, {choice: [...]}.
+wheel_profile: AAR_2A_ref_wide
+rail_profile: rail_136re_placeholder
+wheel_x_m: 0.0
+wheel_rot_deg: {uniform: [0, 360]}    # a different tread patch every frame (or sequence start)
+lateral_shift_m: {uniform: [-0.004, 0.004]}
+speed_mps: 0.5                         # sequence mode only: rolling speed along +x
+track_half_length_m: 1.2
+rust: {uniform: [0.0, 0.4]}
+roughness: {uniform: [0.3, 0.6]}
+ambient: 0.05
+noise_seed: {uniform: [0, 100]}

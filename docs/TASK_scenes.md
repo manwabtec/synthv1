@@ -31,13 +31,22 @@ Prerequisite: `docs/TASK_infra.md` (Phase 0) is complete. Follow `AGENTS.md`. Do
   3D layout view that writes back to the config YAML, (2) starting renders and viewing the
   camera images, and (3) a Blender-rendered 3D overview of the scene.
 
-**Progress:** Phase 1 done except sequence mode. Phase 2: profiles, wheel (split into
-tread/flange/rim face/plate/hub), rails, ties, tie plates, ballast. Phase 3: `wheel_rail`
-scene with `configs/wheel_rail/rig.yaml` (example layout).
-Phase 5 (GUI): `tools/gui/app.py` (`python3 infra/cloud.py gui`) with the Layout,
-Render & images and 3D view tabs; layout geometry in `synthrig/layout.py` (no bpy), 3D
-overview renderer in `synthrig/render/observer.py`. Still open: sequence mode, wheelset
-(both wheels + axle), the other three scenes, Phase 4 per-scene validation tests.
+**Progress (2026-11-11):**
+- Phase 1: done (registry, scene YAML, sequence mode, layering/determinism tests). Mounts
+  not needed for `frame: track` rigs.
+- Phase 2: profiles, wheel (tread/flange/rim face/plate/hub), rails, ties, tie plates,
+  ballast, materials. Open: wheelset (axle + both wheels), truck, car, consist,
+  environment presets, frustum culling.
+- Phase 3: `wheel_rail` and `wheel_tread` (rolling sequences via `speed_mps`) done with
+  example layouts. Open: `train`, `rail_topdown`.
+- Phase 4: tests/test_scenes.py for both scenes (taxonomy, visible points, dot GT bias
+  < 0.05 px, GT disparity, params, per-scene acceptance). Finding: GT disparity is exact
+  only to ~0.5 x rectification zoom x local disparity gradient (nearest-pixel depth
+  lookup, AGENTS rule 7), i.e. ~0.1-0.17 px on the tread close-up; the test checks that
+  bound instead of a flat 0.05 px.
+- Phase 5 (GUI): `tools/gui/app.py` (`python3 infra/cloud.py gui`) with the Layout,
+  Render & images and 3D view tabs; layout geometry in `synthrig/layout.py` (no bpy), 3D
+  overview renderer in `synthrig/render/observer.py`.
 
 ---
 

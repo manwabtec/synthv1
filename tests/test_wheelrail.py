@@ -90,3 +90,35 @@ def test_registered_scene_params_roundtrip_and_repeat():
     p2 = scene.params(np.random.default_rng([cfg.seed, 5]))
     assert p1 == p2 and json.loads(json.dumps(p1)) == p1
     assert wheelrail.WheelRailParams(**p1).wheel_profile == "AAR_2A_ref_wide"
+
+
+class _FakeScene:
+    """Minimal scene for sequence sampling (no bpy)."""
+
+    def params(self, rng):
+        return {"v": float(rng.uniform())}
+
+    def sequence_params(self, rng, n, fps):
+        v0 = float(rng.uniform())
+        return [{"v": v0, "k": k} for k in range(n)]
+
+
+def test_sequence_frames_are_reproducible_and_share_a_draw():
+    from types import SimpleNamespace
+
+    from synthrig.sampling import frame_params
+
+    seq = SimpleNamespace(length=4, fps=20.0)
+    p5, info5 = frame_params(_FakeScene(), 7, 5, seq)
+    assert info5 == {"sequence_id": 1, "frame_in_sequence": 1, "t_s": 0.05}
+    assert frame_params(_FakeScene(), 7, 5, seq) == (p5, info5)  # (seed, i) alone decides
+    assert frame_params(_FakeScene(), 7, 6, seq)[0]["v"] == p5["v"]  # same sequence, same draw
+    assert frame_params(_FakeScene(), 7, 8, seq)[0]["v"] != p5["v"]  # next sequence differs
+    assert frame_params(_FakeScene(), 7, 5)[1] == {}  # independent mode
+
+
+def test_rolling_wheel_moves_and_turns_together():
+    p = wheelrail.WheelRailParams(speed_mps=0.5, wheel_rot_deg=10.0)
+    q = wheelrail.rolled(p, 0.2)
+    assert q.wheel_x_m == pytest.approx(0.1)
+    assert math.radians(q.wheel_rot_deg - 10.0) * 0.4572 == pytest.approx(0.1)  # no slip

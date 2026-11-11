@@ -356,11 +356,12 @@ with st.sidebar:
     status = st.empty()
 
 tab_layout, tab_render, tab_3d = st.tabs(["Layout", "Render & images", "3D view"])
-is_track = S.rig_doc.get("frame") == "track" and S.run_doc.get("scene") == "wheel_rail"
+LAYOUT_SCENES = {"wheel_rail", "wheel_tread"}  # scenes built from WheelRailParams
+is_track = S.rig_doc.get("frame") == "track" and S.run_doc.get("scene") in LAYOUT_SCENES
 
 with tab_layout:
     if not is_track:
-        st.warning("The layout editor supports wheel_rail runs with a `frame: track` rig "
+        st.warning("The layout editor supports wheel_rail / wheel_tread runs with a `frame: track` rig "
                    "(e.g. configs/wheel_rail/).")
     else:
         left, right = st.columns([1, 2.2])

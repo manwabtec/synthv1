@@ -10,12 +10,13 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import numpy as np
 import yaml
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
+from .assets.classes import CLASSES
 from .dataset import FORMAT_VERSION, write_exr, write_png
 from .paths import output_path
 from .opticsrig import RigModel, load_rig
@@ -54,6 +55,11 @@ class PerturbCfg(_Strict):
     distortion_rel: float = 0.02
 
 
+class SequenceCfg(_Strict):
+    length: int = Field(30, gt=0)  # frames per sequence
+    fps: float = Field(30.0, gt=0)  # frame k of a sequence is at t = k / fps seconds
+
+
 class RunConfig(_Strict):
     rig: str
     scene: str  # registered scene name (scenes/<name>/) or "module.path:ClassName"
@@ -66,6 +72,14 @@ class RunConfig(_Strict):
     render: RenderCfg = RenderCfg()
     outputs: OutputsCfg = OutputsCfg()
     calib_perturbation: PerturbCfg = PerturbCfg()
+    # independent: every frame sampled on its own. sequence: frames come in sequences of
+    # `sequence.length` (scene.sample_sequence), e.g. a wheel rolling through the view.
+    mode: Literal["independent", "sequence"] = "independent"
+    sequence: SequenceCfg = SequenceCfg()
+
+    @property
+    def sequence_cfg(self) -> Optional[SequenceCfg]:
+        return self.sequence if self.mode == "sequence" else None
 
     @classmethod
     def load(cls, path) -> "RunConfig":
@@ -190,6 +204,7 @@ class Pipeline:
             "scene": self.cfg.scene, "run_config": self.cfg.model_dump(mode="json"),
             "units": {"length": "m", "disparity": "px", "depth": "planar z along optical axis"},
             "generator_env": {**generator_env(self.cfg.render.device), **(extra_env or {})},
+            "classes": list(CLASSES),  # segmentation taxonomy (stable ids); meta.json maps objects to names
         }
         (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
         (out / "rig.yaml").write_text(yaml.safe_dump(rig.spec.model_dump(mode="json"), sort_keys=False))
@@ -221,7 +236,7 @@ class Pipeline:
         from .render.blender_backend import laser_group
         from .render.assembly import build_frame
 
-        params, ctx = build_frame(be, rig, self.scene, cfg.seed, idx)
+        params, ctx = build_frame(be, rig, self.scene, cfg.seed, idx, cfg.sequence_cfg)
 
         fdir = self.out / "frames" / f"{idx:06d}"
         if fdir.exists():
@@ -282,7 +297,7 @@ class Pipeline:
         np.savez_compressed(fdir / "dots.npz", **dz)
 
         timings["total"] = round(time.time() - t0, 2)
-        meta = {"frame": idx, "seed": [cfg.seed, idx], "scene": cfg.scene, "scene_params": params,
+        meta = {"frame": idx, "seed": [cfg.seed, idx], "scene": cfg.scene, **ctx.frame_info, "scene_params": params,
                 "T_world_rig": ctx.T_world_rig.tolist(), "objects": ctx.objects, "rig_hash": rig.spec.hash(),
                 "timings_s": timings}
         (fdir / "meta.json").write_text(json.dumps(meta, indent=2, default=_json_default))

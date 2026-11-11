@@ -42,3 +42,22 @@ def sample_value(value: Any, rng: np.random.Generator) -> Any:
 def sample_config(config: dict[str, Any], rng: np.random.Generator) -> dict[str, Any]:
     """Fixed values copied, specs drawn (sorted keys -> order-independent)."""
     return {k: sample_value(config[k], rng) for k in sorted(config)}
+
+
+def frame_params(scene, seed: int, index: int, sequence=None) -> tuple[dict, dict]:
+    """Scene parameters for dataset frame `index`, plus extra meta.json fields.
+
+    independent (sequence=None): params from rng([seed, index]).
+    sequence (an object with .length frames per sequence and .fps): frame i is frame
+    k = i % length of sequence s = i // length; the whole sequence is drawn from
+    rng([seed, s, SEQUENCE_STREAM]) by scene.sequence_params, so frame i is still
+    reproducible from (seed, i) alone.
+    """
+    if sequence is None:
+        return scene.params(np.random.default_rng([seed, index])), {}
+    s, k = divmod(index, sequence.length)
+    seq = scene.sequence_params(np.random.default_rng([seed, s, SEQUENCE_STREAM]), sequence.length, sequence.fps)
+    return seq[k], {"sequence_id": s, "frame_in_sequence": k, "t_s": k / sequence.fps}
+
+
+SEQUENCE_STREAM = 0x5E0  # separates sequence draws from per-frame draws

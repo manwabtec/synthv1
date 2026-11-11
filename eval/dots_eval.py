@@ -16,45 +16,10 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from scipy.spatial import cKDTree
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from eval.common import detect_dots, match  # noqa: E402,F401  (shared with tests)
 from synthrig.dataset import Dataset  # noqa: E402
-
-
-def detect_dots(img: np.ndarray, kernel: int = 9, k_sigma: float = 8.0, min_area: int = 2):
-    g = img.astype(np.float32)
-    if g.ndim == 3:
-        g = g.mean(-1)
-    se = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel, kernel))
-    top = g - cv2.morphologyEx(g, cv2.MORPH_OPEN, se)
-    noise = 1.4826 * np.median(np.abs(top - np.median(top))) + 1e-3
-    mask = (top > k_sigma * noise).astype(np.uint8)
-    n, lab, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
-    ys, xs = np.nonzero(lab)
-    w = top[ys, xs]
-    ids = lab[ys, xs]
-    sw = np.bincount(ids, w, n)
-    cx = np.bincount(ids, w * xs, n) / np.maximum(sw, 1e-9)
-    cy = np.bincount(ids, w * ys, n) / np.maximum(sw, 1e-9)
-    keep = np.arange(1, n)[stats[1:, cv2.CC_STAT_AREA] >= min_area]
-    return np.stack([cx[keep], cy[keep]], 1)
-
-
-def match(det, gt, radius):
-    if len(det) == 0 or len(gt) == 0:
-        return np.full(len(gt), -1)
-    d, j = cKDTree(det).query(gt, distance_upper_bound=radius)
-    j[~np.isfinite(d)] = -1
-    # enforce one-to-one: keep the closest GT per detection
-    best = {}
-    for gi, (dj, dd) in enumerate(zip(j, d)):
-        if dj >= 0 and (dj not in best or dd < best[dj][1]):
-            best[dj] = (gi, dd)
-    out = np.full(len(gt), -1)
-    for dj, (gi, _) in best.items():
-        out[gi] = dj
-    return out
 
 
 def main():

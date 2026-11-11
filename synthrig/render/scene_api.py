@@ -29,6 +29,7 @@ class SceneContext:
         self.rig = rig
         self.rng = rng
         self.objects: dict[int, dict[str, str]] = {}  # pass_index -> {name, class}
+        self.frame_info: dict = {}  # sequence_id / frame_in_sequence / t_s in sequence mode
         self.T_world_rig = np.eye(4)
         self._next = 1
 
@@ -99,6 +100,19 @@ class Scene(ABC):
     @abstractmethod
     def build(self, ctx: SceneContext, params: dict) -> None:
         """Create the world for this frame from params (no hidden randomness)."""
+
+    def sample_sequence(self, rng: np.random.Generator, n_frames: int, fps: float) -> list[dict]:
+        """Parameters for the frames of one sequence. Default: independent draws.
+
+        Scenes with motion override this (e.g. one wheel rolling: x and rotation follow t).
+        """
+        return [self.sample_params(rng) for _ in range(n_frames)]
+
+    def sequence_params(self, rng: np.random.Generator, n_frames: int, fps: float) -> list[dict]:
+        out = self.sample_sequence(rng, n_frames, fps)
+        for p in out:
+            p.update(self.overrides)
+        return out
 
     def params(self, rng: np.random.Generator) -> dict:
         p = self.sample_params(rng)

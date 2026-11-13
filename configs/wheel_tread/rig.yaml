@@ -16,9 +16,9 @@ description: >
 
 cameras:
   - name: cam0                      # field rod, near end
-    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 30}
+    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 50.2}
     distortion: [-0.05, 0.02, 0.0, 0.0, 0.0]
-    pose: {position: [0.35, -0.95, 0.01], look_at: [0.2324, -0.7462, 0.0635]}
+    pose: {position: [0.4125, -0.888, 0.01], look_at: [0.536, -0.7611, 0.076]}
     sensor:
       mono: true
       bit_depth: 12
@@ -27,9 +27,9 @@ cameras:
       exposure: 1.0
       bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}
   - name: cam1                      # field rod, far end
-    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 30}
+    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 50.2}
     distortion: [-0.05, 0.02, 0.0, 0.0, 0.0]
-    pose: {position: [0.65, -0.95, 0.01], look_at: [0.2324, -0.7462, 0.0635]}
+    pose: {position: [0.6135, -0.888, 0.01], look_at: [0.536, -0.7611, 0.076]}
     sensor:
       mono: true
       bit_depth: 12
@@ -38,9 +38,9 @@ cameras:
       exposure: 1.0
       bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}
   - name: cam2                      # gauge rod, far end
-    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 30}
+    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 58.8}
     distortion: [-0.05, 0.02, 0.0, 0.0, 0.0]
-    pose: {position: [0.65, -0.55, 0.01], look_at: [0.2324, -0.705, 0.0635]}
+    pose: {position: [0.588, -0.601, -0.049], look_at: [0.5043, -0.7456, 0.0635]}
     sensor:
       mono: true
       bit_depth: 12
@@ -49,9 +49,9 @@ cameras:
       exposure: 1.0
       bloom: {enabled: true, fraction: 0.3, sigma_px: 1.5}
   - name: cam3                      # gauge rod, near end
-    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 30}
+    intrinsics: {width: 1936, height: 1216, pixel_size_um: 5.86, hfov_deg: 58.8}
     distortion: [-0.05, 0.02, 0.0, 0.0, 0.0]
-    pose: {position: [0.35, -0.55, 0.01], look_at: [0.2324, -0.705, 0.0635]}
+    pose: {position: [0.438, -0.601, -0.049], look_at: [0.5043, -0.7456, 0.0635]}
     sensor:
       mono: true
       bit_depth: 12
@@ -71,15 +71,15 @@ stereo_pairs:
 lasers:
   - name: green_dots                # field side, above the field rod
     wavelength_nm: 520
-    pose: {position: [0.50, -0.95, 0.15], look_at: [0.2324, -0.7462, 0.0635]}
-    pattern: {type: grid, rows: 11, cols: 15, fan_deg: [14, 10]}
-    power_w: 100
+    pose: {position: [0.491, -0.92, 0.018], look_at: [0.5337, -0.7466, 0.0825]}
+    pattern: {type: grid, rows: 25, cols: 25, fan_deg: [35, 35]}
+    power_w: 35.0
     dot_sigma_mrad: 0.5
   - name: red_line                  # gauge side, above the gauge rod
     wavelength_nm: 650
-    pose: {position: [0.50, -0.55, 0.15], look_at: [0.2324, -0.705, 0.0635]}
-    pattern: {type: line, fan_deg: 30, angle_deg: 0}
-    power_w: 150
+    pose: {position: [0.536, -0.523, -0.038], look_at: [0.558, -0.7331, 0.0635]}
+    pattern: {type: grid, rows: 25, cols: 25, fan_deg: [40, 40]}
+    power_w: 10.0
     dot_sigma_mrad: 0.5
 
 lights:
